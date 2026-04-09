@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>선거지원 AI · 통합 검색</title>
+<meta name="description" content="유권해석·실무안내·조문을 한 번에 검색하는 선거지원 직원용 도구">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚖%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ─── 데이터 로딩 / 업로드 오버레이 ─── -->
+<div class="data-overlay" id="dataOverlay">
+  <div style="font-size:56px">🗄️</div>
+  <div style="text-align:center">
+    <h2 class="overlay-title">데이터 로딩 중</h2>
+    <p class="overlay-desc">유권해석·법령·실무안내서를 불러오고 있습니다</p>
+  </div>
+  <div class="data-progress">
+    <div class="data-progress-row" data-key="qaData" data-label="유권해석 DB">
+      <span class="icon">⏳</span>
+      <span class="label">유권해석 DB</span>
+    </div>
+    <div class="data-progress-row" data-key="lawsText" data-label="실무안내서·룰">
+      <span class="icon">⏳</span>
+      <span class="label">실무안내서·룰</span>
+    </div>
+    <div class="data-progress-row" data-key="lawIndex" data-label="법령 인덱스">
+      <span class="icon">⏳</span>
+      <span class="label">법령 인덱스</span>
+    </div>
+  </div>
+  <div class="data-upload-mount"></div>
+</div>
+
+<!-- ─── 헤더 ─── -->
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-icon">⚖</div>
+    <div class="logo-text">
+      <h1>선거지원 AI</h1>
+      <p>유권해석 · 실무안내 · 조문 통합검색</p>
+    </div>
+  </div>
+  <div class="step-bar" id="stepBar">
+    <div class="step-dot active" id="dot0">1</div>
+    <div class="step-line" id="line01"></div>
+    <div class="step-dot" id="dot1">2</div>
+    <div class="step-line" id="line12"></div>
+    <div class="step-dot" id="dot2">3</div>
+    <div class="step-line" id="line23"></div>
+    <div class="step-dot" id="dot3">4</div>
+    <div class="step-line" id="line34"></div>
+    <div class="step-dot" id="dot4">5</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="api-wrap">
+      <span class="api-label">API</span>
+      <input class="api-input" id="apiKey" type="password" placeholder="sk-ant-xxxx" autocomplete="off">
+      <span class="api-status no" id="apiStatus">미입력</span>
+    </div>
+  </div>
+</header>
+
+<!-- ─── 본문 (5단계 슬라이드) ─── -->
+<div class="app-body">
+  <div class="slide-wrap">
+    <div class="slide-track" id="slideTrack">
+
+      <!-- 패널 0: 대분류 -->
+      <div class="slide-panel">
+        <div class="panel-title">업무 분류 선택</div>
+        <div class="panel-sub">선거절차 또는 지도업무를 선택하세요</div>
+        <div id="electionGrid"></div>
+      </div>
+
+      <!-- 패널 1: 세부분류 -->
+      <div class="slide-panel">
+        <button class="back-btn" data-step="0">← 업무 분류</button>
+        <div class="panel-title">세부 분류 선택</div>
+        <div class="panel-sub">각 항목에 매칭되는 자료 건수가 표시됩니다</div>
+        <div class="choice-grid" id="taskGrid"></div>
+      </div>
+
+      <!-- 패널 2: 변수 입력 -->
+      <div class="slide-panel">
+        <button class="back-btn" id="btnBack2">← 세부 분류</button>
+        <div class="panel-title">상황 입력</div>
+        <div class="panel-sub">핵심 사실관계를 선택하세요. 답변에 따라 결과 수가 실시간 변화합니다.</div>
+        <div class="count-bar" id="countBar2"></div>
+        <div class="chat-var-area" id="chatVarArea"></div>
+        <div id="varSubmitWrap" style="display:none;margin-top:16px;flex-shrink:0">
+          <button class="btn-submit" id="btnSubmit">통합 검색하기 →</button>
+        </div>
+      </div>
+
+      <!-- 패널 3: 로딩 -->
+      <div class="slide-panel" style="align-items:center;justify-content:center">
+        <div style="text-align:center">
+          <div class="spin"></div>
+          <div style="font-size:16px;font-weight:600;color:var(--mint-dark)" id="loadMsg">자료 검색 중...</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)" id="loadSub">잠시만 기다려주세요</div>
+        </div>
+      </div>
+
+      <!-- 패널 4: 결과 -->
+      <div class="slide-panel" style="padding:0">
+        <div class="result-wrap" id="resultWrap"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── 사이드바 (조문/유권해석 상세) ─── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-hd">
+      <div>
+        <div class="sb-law" id="sbLaw"></div>
+        <div class="sb-art" id="sbArt"></div>
+        <div class="sb-tit" id="sbTit"></div>
+      </div>
+      <button class="btn-sb-close" id="btnSidebarClose">✕</button>
+    </div>
+    <div class="sb-body" id="sbBody">조문이나 유권해석을 클릭하면 원문이 표시됩니다.</div>
+    <div class="sb-ft">
+      <button class="btn-sb-act" id="btnSidebarCopy">📋 복사</button>
+      <button class="btn-sb-act" id="btnSidebarLink">🔗 원문 링크</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ─── 히스토리 ─── -->
+<button class="hist-btn" id="histBtn" title="검색 히스토리">📋</button>
+<div class="hist-panel" id="histPanel">
+  <div class="hist-hd">최근 검색 히스토리</div>
+  <div class="hist-list" id="histList"></div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
