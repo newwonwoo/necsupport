@@ -146,6 +146,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .var-free-input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:7px 11px;font-size:12px;outline:none;background:var(--bg);color:var(--text)}
 .var-free-input:focus{border-color:var(--mint)}
 .var-confirm-btn{padding:7px 14px;background:var(--mint);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;cursor:pointer}
+.extra-desc-input{
+  width:100%;margin-top:10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 12px;font-size:13px;font-family:var(--sans);outline:none;resize:vertical;
+  background:var(--bg);color:var(--text);min-height:64px;
+}
+.extra-desc-input:focus{border-color:var(--mint);background:#fff}
+.extra-desc-input::placeholder{color:var(--text3)}
 
 /* ── 단순절차 결과 강조 섹션 (결과 화면 상단) ── */
 .proc-section{

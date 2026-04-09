@@ -328,8 +328,19 @@ function _showVarSubmit(state) {
     const d = document.createElement('div');
     d.className = 'var-bubble';
     const cnt = Object.values(state.vars).filter(Boolean).length;
-    d.innerHTML = `<div class="var-av">🤖</div><div class="var-body" style="color:var(--mint-dark)">${cnt > 0 ? cnt + '개 조건이 입력됐습니다. ' : ''}아래 버튼으로 검색을 시작하세요.</div>`;
+    d.innerHTML = `
+      <div class="var-av">🤖</div>
+      <div class="var-body" style="color:var(--mint-dark)">
+        ${cnt > 0 ? cnt + '개 조건이 입력됐습니다. ' : ''}구체적인 상황이나 추가 정보를 자유롭게 입력해주세요. (선택)
+        <textarea id="extraDescInput" rows="3" class="extra-desc-input"
+          placeholder="예) 후보자가 선거일 90일 전 지역 노인회 모임에서 음료를 제공함"
+        >${escapeHtml(state.extraDesc || '')}</textarea>
+      </div>`;
     area.appendChild(d);
+    const inp = document.getElementById('extraDescInput');
+    if (inp) {
+      inp.addEventListener('input', e => { state.extraDesc = e.target.value; });
+    }
   }
   if (wrap) {
     wrap.style.display = 'block';

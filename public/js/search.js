@@ -50,6 +50,17 @@ export function searchQA(state) {
       else if ((qa.answer || '').slice(0, 300).includes(v))      score += 2;
     }
 
+    // 자유 기술(extraDesc) 키워드 매칭
+    const extraDesc = state.extraDesc || '';
+    if (extraDesc.length >= 2) {
+      const words = extraDesc.split(/[\s,.·]+/).filter(w => w.length >= 2);
+      for (const w of words) {
+        if ((qa.title || '').includes(w))                        score += 5;
+        else if ((qa.question || '').includes(w))                score += 3;
+        else if ((qa.answer || '').slice(0, 300).includes(w))    score += 1;
+      }
+    }
+
     // 결론 품질
     const concl = qa.conclusion || '';
     if (['합법', '가능', '위법', '불가'].includes(concl)) score += 3;
@@ -60,12 +71,34 @@ export function searchQA(state) {
   }
 
   scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, 8);
-  // 강한 매칭 (score >= 15) 카운트 — 옵션별 의미있는 비교용
-  const strongCount = scored.filter(x => x.score >= 15).length;
+
+  // ── 변수 기반 좁힘 필터 (사용자가 변수 추가할 때마다 카운트가 줄어들도록) ──
+  const meaningfulVars = Object.entries(vars).filter(([k, v]) => v && v !== '기타');
+  let filtered = scored;
+  if (meaningfulVars.length > 0) {
+    filtered = scored.filter(({ qa }) => {
+      return meaningfulVars.every(([k, v]) => {
+        if (['행위주체', '후원인유형', '지출주체', '주체'].includes(k)) {
+          const norm = SUBJ_MAP[v] || v;
+          const subjs = qa.tags?.['주체'] || [];
+          return subjs.some(s => s === norm || s.includes(norm) || norm.includes(s));
+        }
+        return (qa.title || '').includes(v) ||
+               (qa.question || '').includes(v) ||
+               (qa.answer || '').slice(0, 300).includes(v);
+      });
+    });
+    // 너무 줄어들면 (3건 미만) 원래 풀로 폴백
+    if (filtered.length < 3 && scored.length >= 3) {
+      filtered = scored;
+    }
+  }
+
+  const top = filtered.slice(0, 8);
+  const strongCount = filtered.filter(x => x.score >= 15).length;
 
   const dist = emptyDist();
-  scored.forEach(x => {
+  filtered.forEach(x => {
     const c = normalizeConclusion(x.qa.conclusion);
     if (c in dist) dist[c]++;
   });
@@ -78,7 +111,7 @@ export function searchQA(state) {
   const maxScore = top.length ? top[0].score : 0;
   const quality = maxScore >= 25 ? 'high' : maxScore >= 15 ? 'mid' : 'low';
 
-  return { matches: top, total: scored.length, strongCount, dist, hasConflict, quality, maxScore };
+  return { matches: top, total: filtered.length, strongCount, dist, hasConflict, quality, maxScore };
 }
 
 // ── 조문 검색 (자동 매핑 + 키워드 검색) ──

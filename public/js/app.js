@@ -15,6 +15,7 @@ const S = {
   task: null,
   elecType: '',
   vars: {},
+  extraDesc: '',
   userArts: [],
   qaData: null,
   lawsText: null,
@@ -157,6 +158,7 @@ function selMain(id) {
 function selTask(id) {
   S.task = id;
   S.vars = {};
+  S.extraDesc = '';
   S.userArts = [];
   ui.updateBreadcrumb(S, goStep);
   S.step = 2;
@@ -200,9 +202,9 @@ async function submitQuery() {
     saveHist(verdict);
     bindResultActions();
 
-    // 결과가 부족하면 자동으로 추가질문 시작 (AI 호출 없음, 로컬 룰베이스)
-    if (results.qa.total < 3) {
-      setTimeout(() => onAnswerNo(), 700);
+    // 결과가 부족(<3건)하거나 너무 많으면(>=30건) 자동으로 좁힘 모드 진입
+    if (results.qa.total < 3 || results.qa.total >= 30) {
+      setTimeout(() => onAnswerNo(), 800);
     }
   } catch (e) {
     console.error(e);
@@ -387,23 +389,24 @@ function askNextLocalQuestion() {
   const area = document.getElementById('aiChatArea');
   if (!area) return;
 
-  // 매번 결과를 다시 검색해서 충분한지 확인
+  // 매번 결과를 다시 검색해서 적절한 범위(3~30)인지 확인
   const r = searchAll(S);
   S._lastResults = r;
   refreshResultTabs(r);
 
-  if (r.qa.total >= 3) {
-    addLocalSystemMsg(`✅ 결과가 ${r.qa.total}건으로 충분해졌습니다. 위 결과를 확인해주세요.`);
+  // 적정 범위(3~29건)면 그만 묻기
+  if (r.qa.total >= 3 && r.qa.total < 30) {
+    addLocalSystemMsg(`✅ 결과가 ${r.qa.total}건으로 적절해졌습니다. 위 유권해석 탭을 확인하세요.`);
+    setTimeout(() => showFreeInputForm('더 좁히고 싶으면 구체적인 상황을 자유롭게 입력하세요.'), 400);
     return;
   }
   if (_localQIdx >= _localQs.length) {
-    // 로컬 질문 다 했는데 결과 부족 → AI 폴백
-    addLocalSystemMsg('🤖 추가 입력에도 적합한 사례가 충분치 않네요. AI 분석으로 넘어갑니다.');
-    if (!CFG.api_key) {
-      addLocalSystemMsg('⚠️ API 키를 입력하면 AI 분석이 가능합니다.');
-      return;
-    }
-    setTimeout(runFinalFallback, 600);
+    // 로컬 질문 다 했음 → 자유 입력 폼 (AI 또는 키워드 재정렬)
+    const msg = r.qa.total >= 30
+      ? `현재 ${r.qa.total}건으로 여전히 많아요. 직접 상황을 입력하면 더 좁힐 수 있습니다.`
+      : `현재 ${r.qa.total}건으로 부족해요. 직접 상황을 입력해주세요.`;
+    addLocalSystemMsg(msg);
+    setTimeout(() => showFreeInputForm('구체적인 사실관계를 자유롭게 입력해주세요.'), 400);
     return;
   }
 
@@ -483,13 +486,12 @@ async function runFinalFallback() {
   if (!area) return;
   const bubble = addAIBubble(area, null);
 
+  const localAnsTxt = Object.entries(_localAns || {}).map(([q, a]) => `${q}: ${a}`).join('; ');
   const ctx = {
     task: S.task,
     elecType: S.elecType,
     vars: S.vars,
-    extra: _localAns
-      ? Object.entries(_localAns).map(([q, a]) => `${q}: ${a}`).join('; ')
-      : '',
+    extra: [S.extraDesc, localAnsTxt].filter(Boolean).join(' / '),
     qaCount: S._lastResults?.counts?.qa || 0,
     guideCount: S._lastResults?.counts?.guides || 0,
     lawCount: S._lastResults?.counts?.laws || 0,
@@ -565,6 +567,7 @@ function resetSearch() {
   S.task = null;
   S.elecType = '';
   S.vars = {};
+  S.extraDesc = '';
   S.userArts = [];
   S._lastResults = null;
   ui.renderMainCats(S, selMain);
