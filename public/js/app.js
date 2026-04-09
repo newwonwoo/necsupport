@@ -273,6 +273,7 @@ async function onAnswerNo() {
 
   _localQs = generateLocalQuestions(S);
   _localQIdx = 0;
+  _localAns = {};
   if (!_localQs.length) {
     // 로컬에서 더 좁힐 변수가 없음 → 바로 AI 폴백
     addLocalSystemMsg('🤖 더 좁힐 수 있는 항목이 없습니다. AI 분석으로 넘어갑니다.');
@@ -287,6 +288,7 @@ async function onAnswerNo() {
 }
 
 let _localQs = [], _localQIdx = 0;
+let _localAns = {};
 
 function askNextLocalQuestion() {
   const area = document.getElementById('aiChatArea');
@@ -344,6 +346,7 @@ function askNextLocalQuestion() {
       const ans = b.dataset.val;
       if (!ans) return;
       S.vars[q.varKey] = ans;
+      _localAns[q.varKey] = ans;
       bubble.querySelectorAll('.choice-pill').forEach(x => x.disabled = true);
       b.classList.add('picked');
       addUserBubble(area, `${q.varKey}: ${ans}`);
@@ -391,10 +394,12 @@ async function runFinalFallback() {
     task: S.task,
     elecType: S.elecType,
     vars: S.vars,
-    extra: Object.entries(_aiAns).map(([q, a]) => `${q}: ${a}`).join('; '),
-    qaCount: S._lastResults?.counts.qa || 0,
-    guideCount: S._lastResults?.counts.guides || 0,
-    lawCount: S._lastResults?.counts.laws || 0,
+    extra: _localAns
+      ? Object.entries(_localAns).map(([q, a]) => `${q}: ${a}`).join('; ')
+      : '',
+    qaCount: S._lastResults?.counts?.qa || 0,
+    guideCount: S._lastResults?.counts?.guides || 0,
+    lawCount: S._lastResults?.counts?.laws || 0,
     articles: (S._lastResults?.laws || []).slice(0, 4).map(a => `${a.law} ${a.article}`).join(', '),
   };
 
