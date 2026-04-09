@@ -154,42 +154,35 @@ function _nextVarQ(state) {
 
   const varKey = _varKeys[_varIdx];
   const opts = VARS[state.task][varKey] || [];
-  const counted = opts.map(o => ({ val: o, cnt: countVarOption(state, varKey, o) }));
+  const counted = opts
+    .filter(o => o !== '기타')
+    .map(o => ({ val: o, cnt: countVarOption(state, varKey, o) }));
   const anyPositive = counted.some(x => x.cnt > 0);
+
+  // 매칭 카운트 기준으로 정렬: 사례 많은 것 → 적은 것 → 0건 (예시)
+  counted.sort((a, b) => b.cnt - a.cnt);
+
+  const pillsHtml = counted.map(x => {
+    const isZero = x.cnt === 0;
+    const ct = x.cnt > 0 ? `<span class="cnt">${x.cnt}</span>` : '';
+    const cls = isZero ? ' var-pill-example' : '';
+    return `<button class="var-pill${cls}" data-key="${varKey}" data-val="${escapeAttr(x.val)}" title="${isZero ? 'DB 사례 없음 (예시)' : x.cnt + '건 매칭'}">${x.val}${ct}</button>`;
+  }).join('');
+
+  const headerHtml = anyPositive
+    ? `<div><b>${varKey}</b>이(가) 무엇인가요?</div>
+       <div style="font-size:11px;color:var(--text3);margin-top:4px">아래 예시에서 선택하거나 직접 입력해주세요. 숫자는 DB 매칭 건수입니다.</div>`
+    : `<div><b>${varKey}</b>이(가) 무엇인가요?</div>
+       <div style="font-size:11px;color:var(--amber);margin-top:4px">⚠️ 직접 매칭되는 사례는 없지만, 아래 예시 중 가까운 것을 선택하거나 직접 입력하세요.</div>`;
 
   const d = document.createElement('div');
   d.className = 'var-bubble';
-
-  if (!anyPositive) {
-    const iid = 'vfi' + _varIdx;
-    d.innerHTML = `
-      <div class="var-av">🤖</div>
-      <div class="var-body">
-        <div><b>${varKey}</b>이(가) 무엇인가요? <span style="font-size:10px;color:var(--text3)">(해당 사례 없음)</span></div>
-        <div class="var-free-input-wrap">
-          <input class="var-free-input" id="${iid}" placeholder="${varKey} 직접 입력">
-          <button class="var-confirm-btn" data-key="${varKey}" data-iid="${iid}">확인</button>
-        </div>
-        <div style="margin-top:6px"><button class="var-skip-btn" data-key="${varKey}">건너뛰기</button></div>
-      </div>`;
-    area.appendChild(d);
-    d.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    _bindVarBubble(state, d, varKey);
-    return;
-  }
-
-  const pillsHtml = counted.map(x => {
-    const hide = x.cnt === 0 ? ' hidden' : '';
-    const ct = x.cnt > 0 ? `<span class="cnt">${x.cnt}</span>` : '';
-    return `<button class="var-pill${hide}" data-key="${varKey}" data-val="${escapeAttr(x.val)}">${x.val}${ct}</button>`;
-  }).join('');
-
   d.innerHTML = `
     <div class="var-av">🤖</div>
     <div class="var-body">
-      <div><b>${varKey}</b>이(가) 무엇인가요?</div>
-      <div class="var-pills">${pillsHtml}</div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      ${headerHtml}
+      <div class="var-pills" style="margin-top:10px">${pillsHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="var-free-btn" data-key="${varKey}">✏️ 직접 입력</button>
         <button class="var-skip-btn" data-key="${varKey}">건너뛰기</button>
       </div>
