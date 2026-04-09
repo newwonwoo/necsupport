@@ -263,11 +263,14 @@ export function generateLocalQuestions(state) {
 }
 
 // ── 단순절차 빠른 답변 추출 ──
+// 임계값을 낮춰서 (25% 이상) 사용자가 빨리 발견할 수 있도록
 export function getQuickProcedure(state) {
   const r = searchQA(state);
   if (!r.matches.length) return null;
-  const procRatio = r.total > 0 ? (r.dist['단순절차'] || 0) / r.total : 0;
-  if (procRatio < 0.4) return null;
+  const procCount = r.dist['단순절차'] || 0;
+  const procRatio = r.total > 0 ? procCount / r.total : 0;
+  // 25% 이상이거나, 절대 건수 5건 이상이면 트리거
+  if (procRatio < 0.25 && procCount < 5) return null;
 
   const procMatch = r.matches.find(m => {
     const c = normalizeConclusion(m.qa.conclusion);
@@ -276,3 +279,6 @@ export function getQuickProcedure(state) {
   if (!procMatch) return null;
   return procMatch.qa;
 }
+
+// 정규화 export
+export function normalize(c) { return normalizeConclusion(c); }

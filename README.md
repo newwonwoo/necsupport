@@ -94,11 +94,14 @@ npx serve public
 
 배포 후 `https://<project>.vercel.app/` 접속.
 
-> ⚠️ **API 키 보안 주의**: 현재는 사용자가 브라우저에 직접 API 키를 입력하여 `localStorage`에 저장합니다. 공개 환경에서 민감한 키를 사용한다면 Vercel Edge Function 프록시로 마이그레이션 권장.
+> ⚠️ **API 키 보안 주의**: 현재는 사용자가 브라우저에 직접 Groq API 키를 입력하여 `localStorage`에 저장합니다. Groq은 무료 티어가 충분하므로 직원별 개인 키 발급 권장. 공유 키를 쓰려면 Vercel Edge Function 프록시로 마이그레이션 권장.
 
 ## 사용법
 
-1. 상단 우측 `API` 입력란에 Claude API 키 입력 (선택, AI 폴백용)
+1. 상단 우측 `API` 입력란에 **Groq API 키** 입력 (선택, AI 폴백용)
+   - 무료 발급: https://console.groq.com/keys
+   - 키 형식: `gsk_xxxx...`
+   - 모델: `llama-3.3-70b-versatile` (config.js에서 변경 가능)
 2. 패널 0에서 **선거절차 / 지도** 중 선택
 3. 패널 1에서 세부 업무 선택 (각 카드에 자료 건수 표시)
 4. 패널 2에서 채팅형 변수 입력 (실시간 카운트바 갱신)

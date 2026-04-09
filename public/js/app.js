@@ -244,13 +244,26 @@ function bindResultActions() {
   document.querySelectorAll('#tab-law .law-card').forEach(c => {
     c.addEventListener('click', () => ui.openSidebar(S, c.dataset.law, c.dataset.art));
   });
-  // 실무안내 카드 토글
+  // 실무안내 카드 → 사이드바에 풀텍스트
   document.querySelectorAll('#tab-guide .guide-card').forEach(c => {
     c.addEventListener('click', () => {
-      const sm = c.querySelector('.guide-card-summary');
-      if (sm) sm.classList.toggle('open');
+      const idx = parseInt(c.dataset.idx);
+      const g = S._lastResults?.guides?.[idx];
+      if (g) ui.showGuideSidebar(g);
     });
   });
+
+  // 단순절차 강조 카드 → QA 사이드바
+  document.querySelectorAll('.proc-section-card').forEach(c => {
+    c.addEventListener('click', () => {
+      const idx = parseInt(c.dataset.procIdx);
+      const m = S._lastResults?.qa?.matches?.[idx];
+      if (m) ui.showQASidebar(m.qa);
+    });
+  });
+
+  // "더 좁혀서 검색" 버튼 → 추가 질문 모드
+  document.getElementById('narrowMoreBtn')?.addEventListener('click', onAnswerNo);
 }
 
 function onAnswerYes() {
@@ -269,22 +282,102 @@ function onAnswerYes() {
 //
 async function onAnswerNo() {
   const sec = document.getElementById('answerCheck');
-  if (sec) sec.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:6px 0">🔍 로컬 분석으로 추가 정보를 묻겠습니다...</div>';
+  if (sec) sec.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:6px 0">🔍 추가 정보를 분석합니다...</div>';
 
   _localQs = generateLocalQuestions(S);
   _localQIdx = 0;
   _localAns = {};
+
   if (!_localQs.length) {
-    // 로컬에서 더 좁힐 변수가 없음 → 바로 AI 폴백
-    addLocalSystemMsg('🤖 더 좁힐 수 있는 항목이 없습니다. AI 분석으로 넘어갑니다.');
-    if (!CFG.api_key) {
-      addLocalSystemMsg('⚠️ API 키를 입력하면 AI 분석이 가능합니다.');
-      return;
-    }
-    setTimeout(runFinalFallback, 600);
+    // 좁힐 변수 없음 → 자유 입력 폼 제공
+    showFreeInputForm('더 좁힐 수 있는 항목이 없습니다. 구체적인 상황을 직접 입력해주세요.');
     return;
   }
   setTimeout(askNextLocalQuestion, 400);
+}
+
+// 자유 입력 폼 (질문 다 끝났거나 처음부터 좁힐 게 없을 때)
+function showFreeInputForm(headerText) {
+  const area = document.getElementById('aiChatArea');
+  if (!area) return;
+
+  const d = document.createElement('div');
+  d.className = 'chat-bubble';
+  d.innerHTML = `
+    <div class="bubble-av">🤖</div>
+    <div class="bubble-body">
+      <div style="font-size:13px;margin-bottom:8px">${ui.escapeHtml(headerText)}</div>
+      <textarea id="freeDescInput" rows="3"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;font-family:var(--sans);outline:none;resize:vertical;background:var(--bg)"
+        placeholder="예) 선거일 90일 전 지역 체육행사에서 후보자 명함을 배부..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="choice-pill" id="freeSubmitBtn" style="background:var(--mint);color:#fff;border-color:var(--mint);font-weight:600">
+          ${CFG.api_key ? '🤖 AI에게 분석 요청' : '🔁 키워드로 재정렬'}
+        </button>
+        <button class="choice-pill" id="freeSkipBtn">건너뛰기</button>
+      </div>
+      ${!CFG.api_key
+        ? '<div style="font-size:10px;color:var(--text3);margin-top:8px">💡 API 키가 없어도 입력 내용으로 결과를 다시 정렬할 수 있습니다.</div>'
+        : ''}
+    </div>`;
+  area.appendChild(d);
+  scrollChatToEnd();
+
+  const inp = document.getElementById('freeDescInput');
+  inp?.focus();
+
+  document.getElementById('freeSubmitBtn').addEventListener('click', () => {
+    const val = (inp?.value || '').trim();
+    if (!val) { inp?.focus(); return; }
+    addUserBubble(area, val);
+    _localAns['추가설명'] = val;
+    inp.disabled = true;
+    document.getElementById('freeSubmitBtn').disabled = true;
+    document.getElementById('freeSkipBtn').disabled = true;
+
+    if (CFG.api_key) {
+      addAIBubble(area, null);
+      scrollChatToEnd();
+      setTimeout(runFinalFallback, 600);
+    } else {
+      doFreeTextRerank(val);
+    }
+  });
+
+  document.getElementById('freeSkipBtn').addEventListener('click', () => {
+    inp.disabled = true;
+    document.getElementById('freeSubmitBtn').disabled = true;
+    document.getElementById('freeSkipBtn').disabled = true;
+    addLocalSystemMsg('검색을 종료합니다.');
+  });
+}
+
+// 자유 텍스트로 결과 재정렬 (API 키 없을 때)
+function doFreeTextRerank(text) {
+  const words = text.split(/[\s,.]+/).filter(w => w.length >= 2);
+  const matches = (S._lastResults?.qa?.matches || []).map(m => {
+    let bonus = 0;
+    words.forEach(w => {
+      if ((m.qa.title || '').includes(w)) bonus += 10;
+      if ((m.qa.question || '').includes(w)) bonus += 5;
+      if ((m.qa.answer || '').slice(0, 300).includes(w)) bonus += 2;
+    });
+    return { ...m, score: (m.score || 0) + bonus };
+  }).sort((a, b) => b.score - a.score);
+  if (S._lastResults) {
+    S._lastResults.qa.matches = matches;
+    refreshResultTabs(S._lastResults);
+  }
+  addLocalSystemMsg(`🔁 입력 내용의 키워드(${words.slice(0, 4).join(', ')}...)로 결과를 재정렬했습니다. 위 유권해석 탭을 다시 확인해주세요.`);
+}
+
+function scrollChatToEnd() {
+  const area = document.getElementById('aiChatArea');
+  if (!area) return;
+  const panel = area.closest('.slide-panel');
+  if (panel) {
+    setTimeout(() => { panel.scrollTop = panel.scrollHeight; }, 50);
+  }
 }
 
 let _localQs = [], _localQIdx = 0;

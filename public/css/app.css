@@ -127,6 +127,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 }
 .var-pill-example:hover{opacity:1;background:var(--mint-light);border-style:solid;border-color:var(--mint);color:var(--mint-dark)}
 .var-pill-example::before{content:'예시 ';font-size:9px;color:var(--text3);font-family:var(--mono);margin-right:3px;font-weight:400}
+.var-pill.picked-suggest{
+  background:var(--mint-light);border:1.5px solid var(--mint);color:var(--mint-dark);
+  font-weight:600;padding:8px 16px;
+}
+.var-pill.picked-suggest:hover{background:var(--mint);color:#fff}
+.var-show-others{
+  padding:7px 14px;background:transparent;border:1px dashed var(--border2);
+  border-radius:18px;font-size:11px;color:var(--text3);cursor:pointer;transition:var(--t);
+}
+.var-show-others:hover{border-color:var(--mint);color:var(--mint);border-style:solid}
 .var-free-btn,.var-skip-btn{
   padding:5px 11px;background:transparent;border:1px dashed var(--border2);
   border-radius:14px;font-size:11px;color:var(--text3);cursor:pointer;transition:var(--t);
@@ -136,6 +146,34 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .var-free-input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:7px 11px;font-size:12px;outline:none;background:var(--bg);color:var(--text)}
 .var-free-input:focus{border-color:var(--mint)}
 .var-confirm-btn{padding:7px 14px;background:var(--mint);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;cursor:pointer}
+
+/* ── 단순절차 결과 강조 섹션 (결과 화면 상단) ── */
+.proc-section{
+  background:linear-gradient(135deg,#EFF6FF 0%,#F0F9FF 100%);
+  border:1.5px solid #93C5FD;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;
+}
+.proc-section-hd{font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.proc-section-card{
+  background:#fff;border:1px solid #BFDBFE;border-radius:var(--radius-sm);
+  padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:var(--t);
+}
+.proc-section-card:hover{border-color:#3b82f6;box-shadow:0 4px 12px rgba(59,130,246,.15)}
+.proc-section-card:last-child{margin-bottom:0}
+.proc-section-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+.proc-section-body{font-size:11px;color:var(--text2);line-height:1.55}
+
+/* ── 결과 너무 많을 때 좁힘 안내 ── */
+.too-many-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:var(--radius);
+  padding:12px 16px;margin-bottom:16px;flex-wrap:wrap;
+}
+.too-many-text{font-size:12px;color:#92400E;flex:1}
+.too-many-btn{
+  background:#F59E0B;color:#fff;border:none;padding:8px 16px;border-radius:18px;
+  font-size:12px;font-weight:600;cursor:pointer;transition:var(--t);white-space:nowrap;
+}
+.too-many-btn:hover{background:#D97706}
 
 /* ── 단순절차 빠른 답변 카드 (변수입력 중간에 등장) ── */
 .proc-quick-card{

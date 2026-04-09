@@ -6,8 +6,10 @@ export const CFG = {
   api_key: null,
   api_enabled: false,
   temperature: 0.3,
-  model: 'claude-sonnet-4-5',
-  data_path: 'data/', // public/data 기준
+  // Groq (OpenAI 호환). 무료 + 매우 빠름
+  model: 'llama-3.3-70b-versatile',
+  api_url: 'https://api.groq.com/openai/v1/chat/completions',
+  data_path: 'data/',
 };
 
 // ── 대분류 ──

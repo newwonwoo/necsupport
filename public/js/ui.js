@@ -157,11 +157,38 @@ function _nextVarQ(state) {
   const counted = opts
     .filter(o => o !== '기타')
     .map(o => ({ val: o, cnt: countVarOption(state, varKey, o) }));
-  const anyPositive = counted.some(x => x.cnt > 0);
 
-  // 매칭 카운트 기준으로 정렬: 사례 많은 것 → 적은 것 → 0건 (예시)
+  // 매칭 카운트 기준으로 정렬: 많은 → 적은 → 0건
   counted.sort((a, b) => b.cnt - a.cnt);
 
+  const positive = counted.filter(x => x.cnt > 0);
+  const anyPositive = positive.length > 0;
+  const isSingle = positive.length === 1;
+
+  const d = document.createElement('div');
+  d.className = 'var-bubble';
+
+  // ── 특수 케이스: 매칭 옵션이 1개뿐 ──
+  if (isSingle) {
+    const only = positive[0];
+    d.innerHTML = `
+      <div class="var-av">🤖</div>
+      <div class="var-body">
+        <div><b>${varKey}</b>에 매칭되는 사례가 <b style="color:var(--mint)">${escapeHtml(only.val)}</b> <span style="font-family:var(--mono);color:var(--mint)">${only.cnt}건</span> 뿐이에요.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">이걸로 진행할까요? 다른 답이라면 옆 버튼을 눌러주세요.</div>
+        <div class="var-pills" style="margin-top:10px">
+          <button class="var-pill picked-suggest" data-only="1" data-key="${varKey}" data-val="${escapeAttr(only.val)}">✅ ${escapeHtml(only.val)}로 진행</button>
+          <button class="var-show-others" type="button">❌ 다른 답 선택</button>
+        </div>
+      </div>`;
+    area.appendChild(d);
+    d.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    _bindSingleBubble(state, d, varKey, counted);
+    _checkProcedureSnippet(state);
+    return;
+  }
+
+  // ── 일반 케이스: 옵션 모두 표시 (0건은 예시) ──
   const pillsHtml = counted.map(x => {
     const isZero = x.cnt === 0;
     const ct = x.cnt > 0 ? `<span class="cnt">${x.cnt}</span>` : '';
@@ -175,8 +202,6 @@ function _nextVarQ(state) {
     : `<div><b>${varKey}</b>이(가) 무엇인가요?</div>
        <div style="font-size:11px;color:var(--amber);margin-top:4px">⚠️ 직접 매칭되는 사례는 없지만, 아래 예시 중 가까운 것을 선택하거나 직접 입력하세요.</div>`;
 
-  const d = document.createElement('div');
-  d.className = 'var-bubble';
   d.innerHTML = `
     <div class="var-av">🤖</div>
     <div class="var-body">
@@ -193,6 +218,39 @@ function _nextVarQ(state) {
 
   // 매 변수 입력 후 단순절차 빠른 답변 체크
   _checkProcedureSnippet(state);
+}
+
+// 매칭 1개뿐일 때 바인딩 — "진행" or "다른 답 선택"
+function _bindSingleBubble(state, bubble, varKey, counted) {
+  bubble.querySelector('[data-only="1"]').addEventListener('click', e => {
+    const val = e.currentTarget.dataset.val;
+    state.vars[varKey] = val;
+    bubble.querySelectorAll('button').forEach(b => b.disabled = true);
+    e.currentTarget.classList.add('picked');
+    _appendUserBubble(val);
+    _varIdx++;
+    _onVarChange?.();
+    setTimeout(() => _nextVarQ(state), 300);
+  });
+  bubble.querySelector('.var-show-others').addEventListener('click', () => {
+    // 일반 모드로 전환 (같은 버블에 모든 옵션 표시)
+    const pillsHtml = counted.map(x => {
+      const isZero = x.cnt === 0;
+      const ct = x.cnt > 0 ? `<span class="cnt">${x.cnt}</span>` : '';
+      const cls = isZero ? ' var-pill-example' : '';
+      return `<button class="var-pill${cls}" data-key="${varKey}" data-val="${escapeAttr(x.val)}" title="${isZero ? 'DB 사례 없음 (예시)' : x.cnt + '건 매칭'}">${x.val}${ct}</button>`;
+    }).join('');
+    const body = bubble.querySelector('.var-body');
+    body.innerHTML = `
+      <div><b>${varKey}</b>이(가) 무엇인가요?</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">아래 예시에서 선택하거나 직접 입력해주세요. 숫자는 DB 매칭 건수입니다.</div>
+      <div class="var-pills" style="margin-top:10px">${pillsHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="var-free-btn" data-key="${varKey}">✏️ 직접 입력</button>
+        <button class="var-skip-btn" data-key="${varKey}">건너뛰기</button>
+      </div>`;
+    _bindVarBubble(state, bubble, varKey);
+  });
 }
 
 function _bindVarBubble(state, bubble, varKey) {
@@ -310,9 +368,7 @@ let _quickShown = false;
 function _checkProcedureSnippet(state) {
   if (_quickShown) return;
   const r = searchQA(state);
-  if (r.total < 3) return;
-  const procRatio = r.dist['단순절차'] / r.total;
-  if (procRatio < 0.5) return;
+  if (r.total < 2) return;
   const proc = getQuickProcedure(state);
   if (!proc) return;
   _quickShown = true;
@@ -355,11 +411,41 @@ export function renderResult(state, results, ai) {
   const verdict = computeVerdict(results.qa, ai);
   const vd = VERDICT_META[verdict.label] || VERDICT_META['미분류'];
 
+  // ── 단순절차 강조 카드 (결론='단순절차'인 사례가 있으면 별도 표시) ──
+  const procMatches = results.qa.matches.filter(m => {
+    const c = m.qa.conclusion || '';
+    return c === '단순절차' || c === '절차';
+  }).slice(0, 3);
+  const procHtml = procMatches.length ? `
+    <div class="proc-section">
+      <div class="proc-section-hd">📋 단순절차로 처리되는 유사사례 ${procMatches.length}건</div>
+      ${procMatches.map((m, i) => `
+        <div class="proc-section-card" data-proc-idx="${results.qa.matches.indexOf(m)}">
+          <div class="proc-section-title">${escapeHtml(m.qa.title || '')}</div>
+          <div class="proc-section-body">${escapeHtml((m.qa.answer || '').slice(0, 200))}${(m.qa.answer || '').length > 200 ? '...' : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // ── 결과 너무 많을 때 좁힘 안내 ──
+  const tooManyHtml = (results.counts.qa >= 30) ? `
+    <div class="too-many-banner">
+      <div class="too-many-text">
+        🔍 결과가 <b>${results.counts.qa}건</b>으로 많아요. 상위 ${results.qa.matches.length}건만 표시 중입니다.
+      </div>
+      <button class="too-many-btn" id="narrowMoreBtn">+ 더 좁혀서 검색</button>
+    </div>
+  ` : '';
+
   let html = `
     <div class="result-header">
       <div class="verdict ${vd.cls}">${vd.label}</div>
       <div class="trust">${verdict.trust}</div>
     </div>
+
+    ${procHtml}
+    ${tooManyHtml}
 
     <div class="res-tabs">
       <button class="res-tab active" data-tab="qa">📚 유권해석 <span class="badge">${results.counts.qa}</span></button>
@@ -493,22 +579,23 @@ function computeVerdict(qa, ai) {
 // ─── 사이드바 ───────────────────────────────
 export function openSidebar(state, law, num) {
   const data = state.lawsText?.laws?.[law] || state.lawsText?.guidebooks?.[law];
+  const lawUrl = `https://www.law.go.kr/법령/${encodeURIComponent(law)}`;
   if (!data) {
-    document.getElementById('sbLaw').textContent = law;
-    document.getElementById('sbArt').textContent = num;
-    document.getElementById('sbTit').textContent = '';
-    document.getElementById('sbBody').textContent = '원문 데이터 없음. 법제처 링크를 이용하세요.';
-    document.getElementById('sidebar').dataset.url = `https://www.law.go.kr/법령/${encodeURIComponent(law)}`;
-    document.getElementById('sidebar').classList.add('open');
+    // 원문 데이터 없음 → 바로 법제처 새 창으로 열기 (사이드바는 띄우지 않음)
+    window.open(lawUrl, '_blank', 'noopener');
     return;
   }
   const art = (data.articles || []).find(a => a.article_num === num);
-  if (!art) return;
+  if (!art) {
+    // 해당 조문 못 찾으면 법령 페이지라도 열기
+    window.open(lawUrl, '_blank', 'noopener');
+    return;
+  }
   document.getElementById('sbLaw').textContent = law;
   document.getElementById('sbArt').textContent = num;
   document.getElementById('sbTit').textContent = art.title ? '(' + art.title + ')' : '';
   document.getElementById('sbBody').textContent = art.text;
-  document.getElementById('sidebar').dataset.url = `https://www.law.go.kr/법령/${encodeURIComponent(law)}`;
+  document.getElementById('sidebar').dataset.url = lawUrl;
   document.getElementById('sidebar').classList.add('open');
 }
 
@@ -523,6 +610,20 @@ export function showQASidebar(qa) {
   ].filter(Boolean).join('\n');
   document.getElementById('sbBody').textContent = text;
   document.getElementById('sidebar').dataset.url = qa.url || '';
+  document.getElementById('sidebar').classList.add('open');
+}
+
+export function showGuideSidebar(g) {
+  document.getElementById('sbLaw').textContent = g.book || '실무안내';
+  document.getElementById('sbArt').textContent = g.title || '제목없음';
+  document.getElementById('sbTit').textContent = g.page_hint ? `p.${g.page_hint}` : '';
+  const text = [
+    g.summary ? '[요약]\n' + g.summary : '',
+    g.text ? '\n\n[본문]\n' + g.text : '',
+    g.keywords?.length ? '\n\n[키워드]\n' + g.keywords.join(' · ') : '',
+  ].filter(Boolean).join('\n').trim() || '본문 없음';
+  document.getElementById('sbBody').textContent = text;
+  document.getElementById('sidebar').dataset.url = '';
   document.getElementById('sidebar').classList.add('open');
 }
 
