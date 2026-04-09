@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>선거법 유권해석 AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F0FAFA;--bg2:#E6F7F7;--surface:#ffffff;--surface2:#F7FDFD;
+  --border:#B5E5DC;--border2:#9FE1CB;
+  --text:#0a3d32;--text2:#1D6B58;--text3:#5A9B8A;
+  --mint:#0D9E75;--mint2:#07C9A5;--mint-light:#E1F5EE;--mint-dark:#0a3d32;
+  --red:#E55A5A;--amber:#F0A040;
+  --mono:'DM Mono',monospace;--sans:'Noto Sans KR',sans-serif;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 2px 16px rgba(13,158,117,.08);
+  --shadow-lg:0 8px 32px rgba(13,158,117,.12);
+  --t:.2s cubic-bezier(.4,0,.2,1);
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+/* ── 추가정보 제안 섹션 ── */
+.suggest-section{margin-top:16px;padding:16px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius)}
+.suggest-title{font-size:12px;font-weight:700;color:var(--mint-dark);margin-bottom:12px}
+.suggest-item{margin-bottom:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.suggest-item-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px}
+.suggest-examples{font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.6}
+.suggest-pills{display:flex;flex-wrap:wrap;gap:6px}
+.suggest-pill{padding:5px 12px;background:var(--mint-light);border:1px solid var(--border2);border-radius:20px;font-size:12px;color:var(--mint-dark);cursor:pointer;transition:var(--t)}
+.suggest-pill:hover{background:var(--mint);color:#fff;border-color:var(--mint)}
+.suggest-pill.picked{background:var(--mint);color:#fff;border-color:var(--mint)}
+.suggest-free-row{display:flex;gap:6px;margin-top:6px}
+.suggest-free-input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;outline:none;background:var(--bg);color:var(--text)}
+.suggest-free-input:focus{border-color:var(--mint)}
+.suggest-confirm-btn{padding:6px 14px;background:var(--mint);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;cursor:pointer}
+.answer-check-section{display:flex;gap:10px;margin-top:16px;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);align-items:center}
+.answer-check-label{font-size:13px;color:var(--text);flex:1}
+.answer-check-yes{padding:8px 18px;background:var(--mint-light);border:1.5px solid var(--mint);border-radius:20px;font-size:12px;color:var(--mint-dark);cursor:pointer;font-weight:600;transition:var(--t)}
+.answer-check-yes:hover{background:var(--mint);color:#fff}
+.answer-check-no{padding:8px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;font-size:12px;color:var(--text3);cursor:pointer;transition:var(--t)}
+.answer-check-no:hover{border-color:var(--mint);color:var(--mint-dark)}
+
+/* 헤더 */
+.app-header{background:var(--surface);border-bottom:1.5px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--mint),var(--mint2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;box-shadow:0 2px 8px rgba(13,158,117,.3)}
+.logo-text h1{font-size:15px;font-weight:700;color:var(--mint-dark)}
+.logo-text p{font-size:10px;color:var(--text3);font-family:var(--mono);letter-spacing:.5px}
+.step-bar{display:flex;align-items:center;position:absolute;left:50%;transform:translateX(-50%);z-index:10;background:var(--surface);padding:0 8px;max-width:320px;white-space:nowrap}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;font-family:var(--mono);cursor:pointer;transition:var(--t);border:2px solid var(--border);background:var(--surface);color:var(--text3)}
+.step-dot.active{background:var(--mint);border-color:var(--mint);color:#fff;box-shadow:0 2px 8px rgba(13,158,117,.3)}
+.step-dot.done{background:var(--mint-light);border-color:var(--mint);color:var(--mint)}
+.step-line{width:24px;height:2px;background:var(--border)}
+.step-line.done{background:var(--mint)}
+.breadcrumb{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);font-family:var(--mono);max-width:200px;overflow:hidden}
+.breadcrumb span{white-space:nowrap;cursor:pointer;padding:2px 6px;border-radius:4px;transition:var(--t)}
+.breadcrumb span:hover{background:var(--mint-light);color:var(--mint)}
+.breadcrumb .sep{color:var(--border2);cursor:default}
+.api-wrap{display:flex;align-items:center;gap:8px}
+.api-label{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.api-input{background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:5px 10px;font-family:var(--mono);font-size:11px;border-radius:var(--radius-sm);width:140px;outline:none;transition:var(--t)}
+.api-input:focus{border-color:var(--mint)}
+.api-status{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px}
+.api-status.ok{color:var(--mint);background:var(--mint-light);border:1px solid var(--border2)}
+.api-status.no{color:var(--text3);background:var(--bg2);border:1px solid var(--border)}
+
+/* 바디 */
+.app-body{flex:1;display:flex;position:relative;overflow:hidden}
+.slide-wrap{flex:1;position:relative;overflow:hidden}
+.slide-track{display:flex;width:600%;height:calc(100vh - 64px);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.slide-panel{width:calc(100%/6);height:100%;padding:40px 32px 24px;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.panel-title{font-size:22px;font-weight:700;color:var(--mint-dark);margin-bottom:6px}
+.panel-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+
+/* 카드 그리드 */
+.choice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+
+/* 대분류 카드 그리드 - 2열 균등 */
+#electionGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.main-card{
+  position:relative;overflow:hidden;cursor:pointer;
+  background:#fff;border:2px solid #e8f5ef;
+  border-radius:16px;padding:22px 18px 18px;
+  display:flex;flex-direction:column;gap:5px;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  min-height:152px;
+}
+.main-card:hover{border-color:var(--mint);transform:translateY(-3px);box-shadow:0 12px 32px rgba(29,158,117,.12)}
+.main-card-guide{background:linear-gradient(135deg,#f8fffe 0%,#e8f5ef 100%)}
+.main-card-num{font-size:10px;font-weight:700;color:var(--mint);font-family:var(--mono);letter-spacing:.12em}
+.main-card-icon{font-size:26px;margin:4px 0 2px}
+.main-card-name{font-size:18px;font-weight:700;color:#1a2e28;letter-spacing:-.02em}
+.main-card-desc{font-size:11px;color:#6b8c7d;line-height:1.5;flex:1}
+.main-card-arrow{
+  position:absolute;bottom:14px;right:16px;
+  font-size:16px;color:var(--mint);opacity:0;
+  transition:all .2s;
+}
+.main-card:hover .main-card-arrow{opacity:1;transform:translateX(3px)}
+
+/* DB 건수 뱃지 - 헤더용 */
+.db-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:#e8f5ef;color:var(--mint-dark);
+  font-size:11px;font-family:var(--mono);font-weight:600;
+  padding:3px 10px;border-radius:20px;
+  margin-bottom:8px;
+}
+
+/* 세부분류 카드 */
+.choice-card{
+  background:#fff;border:1.5px solid #e8f0ed;
+  border-radius:12px;padding:16px 14px;cursor:pointer;
+  transition:all .2s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;gap:6px;
+  position:relative;overflow:hidden;
+}
+.choice-card:hover{border-color:var(--mint);background:#f8fffe;transform:translateY(-2px);box-shadow:0 8px 20px rgba(29,158,117,.1)}
+.choice-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--mint),#5dcaa5);
+  opacity:0;transition:opacity .2s;
+}
+.choice-card:hover::before{opacity:1}
+.choice-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--mint),var(--mint2));opacity:0;transition:var(--t)}
+.choice-card:hover{border-color:var(--mint);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.choice-card:hover::before{opacity:1}
+.choice-icon{font-size:24px}
+.choice-name{font-size:14px;font-weight:600;color:var(--mint-dark)}
+.choice-desc{font-size:11px;color:var(--text3);line-height:1.5}
+
+/* 폼 */
+.form-section{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.form-label .req{font-size:10px;background:var(--mint);color:#fff;padding:1px 5px;border-radius:3px}
+.form-label .opt{font-size:10px;background:var(--bg2);color:var(--text3);border:1px solid var(--border);padding:1px 5px;border-radius:3px}
+.form-select{width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px 32px 10px 14px;font-family:var(--sans);font-size:13px;border-radius:var(--radius-sm);outline:none;cursor:pointer;transition:var(--t);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235A9B8A' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-select:focus{border-color:var(--mint)}
+.form-textarea{width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;border-radius:var(--radius-sm);outline:none;resize:vertical;min-height:80px;transition:var(--t)}
+.form-textarea:focus{border-color:var(--mint)}
+.form-textarea::placeholder{color:var(--text3)}
+
+/* 정확도 */
+.accuracy-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.accuracy-label{font-size:12px;color:var(--text3);white-space:nowrap}
+.accuracy-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.accuracy-fill{height:100%;background:linear-gradient(90deg,var(--mint),var(--mint2));border-radius:3px;transition:width .4s ease}
+.accuracy-pct{font-size:12px;font-weight:600;color:var(--mint);font-family:var(--mono);white-space:nowrap}
+
+/* 조문 검색 */
+.art-search-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.art-search-hd{padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:var(--t)}
+.art-search-hd:hover{background:var(--bg2)}
+.art-search-bd{padding:0 16px 16px;display:none}
+.art-search-bd.open{display:block}
+.search-row{display:flex;gap:8px;margin-bottom:12px}
+.search-input{flex:1;background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--sans);font-size:13px;border-radius:var(--radius-sm);outline:none;transition:var(--t)}
+.search-input:focus{border-color:var(--mint)}
+.btn-search{background:var(--mint);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--t);white-space:nowrap}
+.btn-search:hover{background:var(--mint-dark)}
+.art-results{max-height:180px;overflow-y:auto}
+.art-item{padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;display:flex;align-items:flex-start;gap:8px;transition:var(--t)}
+.art-item:hover{background:var(--mint-light)}
+.art-num{font-family:var(--mono);font-size:10px;color:var(--mint);font-weight:500;white-space:nowrap;padding-top:1px;min-width:90px}
+.art-preview{color:var(--text2);line-height:1.4}
+.sel-articles{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.art-tag{background:var(--mint-light);border:1px solid var(--border2);color:var(--mint-dark);padding:3px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);display:flex;align-items:center;gap:4px;cursor:pointer}
+.art-tag .x{color:var(--text3)}
+.art-tag .x:hover{color:var(--red)}
+
+/* 제출버튼 */
+.btn-submit{width:100%;background:linear-gradient(135deg,var(--mint),var(--mint2));color:#fff;border:none;padding:16px;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:var(--sans);cursor:pointer;transition:var(--t);box-shadow:0 4px 16px rgba(13,158,117,.25);margin-top:8px}
+.btn-submit:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,158,117,.35)}
+
+/* 결과 */
+.result-wrap{padding:32px 32px}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.verdict{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:30px;font-size:16px;font-weight:700}
+.verdict.possible{background:#E1F5EE;color:#0a3d32;border:2px solid var(--mint)}
+.verdict.impossible{background:#FEE;color:#991B1B;border:2px solid var(--red)}
+.verdict.conditional{background:#FEF3C7;color:#92400E;border:2px solid var(--amber)}
+.verdict.unknown{background:#F3F4F6;color:#374151;border:2px solid #9CA3AF}
+.verdict.procedure{background:#EFF6FF;color:#1E40AF;border:2px solid #93C5FD}
+.verdict.external{background:#F5F3FF;color:#5B21B6;border:2px solid #C4B5FD}
+.qa-v.procedure{background:#EFF6FF;color:#1E40AF}
+.qa-v.external{background:#F5F3FF;color:#5B21B6}
+
+/* 실시간 미리보기 */
+.preview-bar{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 14px;
+  margin-bottom:12px;display:flex;align-items:center;gap:10px;
+  transition:var(--t);
+}
+.preview-bar.has-data{border-color:var(--border2)}
+.preview-count{font-size:13px;font-weight:600;color:var(--mint-dark);font-family:var(--mono);white-space:nowrap}
+.preview-dist{flex:1;display:flex;gap:3px;height:8px;border-radius:4px;overflow:hidden}
+.preview-seg{height:100%;transition:width .4s ease}
+.preview-seg.possible{background:#10b981}
+.preview-seg.impossible{background:#ef4444}
+.preview-seg.conditional{background:#f59e0b}
+.preview-seg.procedure{background:#3b82f6}
+.preview-seg.external{background:#8b5cf6}
+.preview-labels{display:flex;gap:8px;font-size:10px;font-family:var(--mono);white-space:nowrap}
+.preview-label{display:flex;align-items:center;gap:3px;color:var(--text3)}
+.preview-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.choice-card .preview-hint{
+  font-size:10px;color:var(--text3);font-family:var(--mono);
+  margin-top:4px;
+}
+.choice-card:hover .preview-hint{color:var(--mint)}
+.verdict-hint{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:1px 5px;border-radius:3px;
+  font-size:10px;font-family:var(--mono);
+}
+.verdict-hint.possible{background:#E1F5EE;color:var(--mint)}
+.verdict-hint.impossible{background:#FEE;color:var(--red)}
+.verdict-hint.conditional{background:#FEF3C7;color:#92400E}
+.trust{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--bg2);border:1px solid var(--border);color:var(--text3)}
+.res-sec{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.res-sec-title{font-size:13px;font-weight:700;color:var(--mint-dark);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.qa-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px}
+.qa-card.match{border-left:3px solid var(--mint)}
+.qa-card.miss{border-left:3px solid var(--red);opacity:.7}
+.qa-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.qa-title{font-size:13px;font-weight:500;color:var(--text);line-height:1.4}
+.qa-v{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.qa-v.possible{background:#E1F5EE;color:var(--mint)}
+.qa-v.impossible{background:#FEE;color:var(--red)}
+.qa-v.conditional{background:#FEF3C7;color:#92400E}
+.art-ref{font-family:var(--mono);font-size:11px;color:var(--mint);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border2)}
+.art-ref:hover{color:var(--mint-dark)}
+.step-row{display:flex;gap:12px;margin-bottom:10px}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--mint-light);border:1.5px solid var(--mint);color:var(--mint);font-size:11px;font-weight:600;font-family:var(--mono);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-c{flex:1}
+.step-t{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:3px}
+.ai-box{background:var(--mint-light);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px}
+.ai-text{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:6px}
+.ai-warn{font-size:11px;color:var(--text3)}
+.res-actions{display:flex;gap:10px;margin-top:8px}
+.btn-act{flex:1;padding:12px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--t);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-act:hover{border-color:var(--mint);color:var(--mint);background:var(--mint-light)}
+
+/* 사이드바 */
+.sidebar{width:0;overflow:hidden;background:var(--surface);border-left:1.5px solid var(--border);transition:width .3s cubic-bezier(.4,0,.2,1);flex-shrink:0;display:flex;flex-direction:column}
+.sidebar.open{width:360px}
+.sb-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sb-law{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.sb-art{font-size:15px;font-weight:700;color:var(--mint-dark);margin-top:2px}
+.sb-tit{font-size:12px;color:var(--text2);margin-top:2px}
+.btn-sb-close{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:2px;flex-shrink:0;transition:var(--t)}
+.btn-sb-close:hover{color:var(--text)}
+.sb-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 20px;font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:keep-all;min-height:0}
+.sb-ft{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px}
+.btn-sb-act{flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer;transition:var(--t);text-align:center}
+.btn-sb-act:hover{border-color:var(--mint);color:var(--mint)}
+
+/* 히스토리 */
+.hist-btn{position:fixed;bottom:24px;right:24px;background:var(--mint);color:#fff;border:none;width:48px;height:48px;border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 4px 16px rgba(13,158,117,.35);transition:var(--t);z-index:100}
+.hist-btn:hover{transform:scale(1.1)}
+.hist-panel{position:fixed;bottom:80px;right:24px;width:300px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);display:none;z-index:100;overflow:hidden}
+.hist-panel.open{display:block}
+.hist-hd{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--mint-dark)}
+.hist-list{max-height:280px;overflow-y:auto}
+.hist-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--t)}
+.hist-item:last-child{border-bottom:none}
+.hist-item:hover{background:var(--bg2)}
+.hist-date{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.hist-info{font-size:12px;color:var(--text);margin-top:2px}
+.hist-v{font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:3px;display:inline-block;margin-top:4px}
+
+/* 로딩 */
+.spin{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--mint);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.back-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  background:none;border:none;padding:0;margin-bottom:12px;
+  font-size:13px;color:var(--text3);cursor:pointer;
+  font-family:var(--font, inherit);
+  transition:color .15s;
+}
+.back-btn:hover{color:var(--mint)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* 스크롤바 */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--mint)}
+
+@media print{.app-header,.hist-btn,.hist-panel,.sidebar,.res-actions,.btn-submit{display:none!important}.app-body{display:block}}
+@media(max-width:768px){.step-bar{display:none}.sidebar.open{position:fixed;inset:0;width:100%;z-index:300}.choice-grid{grid-template-columns:1fr 1fr}}
+
+/* ── 채팅 변수 입력 UX ── */
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dotBlink{0%,80%,100%{opacity:0}40%{opacity:1}}
+.chat-var-area{display:flex;flex-direction:column;gap:10px;margin-top:8px;flex:1;overflow-y:auto;min-height:0;padding-right:4px}
+.var-bubble{display:flex;gap:10px;align-items:flex-start;animation:slideUp .28s cubic-bezier(.4,0,.2,1)}
+.var-bubble.user{flex-direction:row-reverse}
+.var-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--mint),var(--mint2));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.var-av.u{background:var(--bg2);border:1.5px solid var(--border);font-size:13px}
+.var-body{max-width:88%;background:var(--surface);border:1.5px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);padding:11px 14px;font-size:13px;color:var(--text);line-height:1.6}
+.var-bubble.user .var-body{background:var(--mint-light);border-color:var(--border2);border-radius:var(--radius) 0 var(--radius) var(--radius);color:var(--mint-dark);font-weight:500}
+.var-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.var-pill{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--text2);cursor:pointer;transition:var(--t);white-space:nowrap}
+.var-pill:hover:not(:disabled){border-color:var(--mint);background:var(--mint-light);color:var(--mint-dark)}
+.var-pill:disabled{opacity:.4;cursor:default}
+.var-pill.picked{background:var(--mint);border-color:var(--mint);color:#fff}
+.var-pill.hidden{display:none}
+.var-pill .cnt{font-size:10px;opacity:.75;margin-left:3px}
+.var-free-btn{font-size:11px;color:var(--text3);background:none;border:1px dashed var(--border);border-radius:20px;padding:4px 12px;cursor:pointer;margin-top:4px;transition:var(--t)}
+.var-free-btn:hover{border-color:var(--mint);color:var(--mint)}
+.var-skip-btn{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-top:6px;text-decoration:underline;text-underline-offset:2px}
+.var-skip-btn:hover{color:var(--mint)}
+.var-free-input-wrap{display:flex;gap:6px;margin-top:8px;width:100%}
+.var-free-input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;font-size:12px;outline:none;background:var(--bg);transition:var(--t);font-family:var(--sans)}
+.var-free-input:focus{border-color:var(--mint)}
+.var-confirm-btn{background:var(--mint);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 14px;font-size:12px;cursor:pointer;white-space:nowrap;transition:var(--t)}
+/* ── AI 채팅 (결과 화면) ── */
+.chat-area{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.chat-bubble{display:flex;gap:10px;align-items:flex-start;animation:slideUp .3s cubic-bezier(.4,0,.2,1)}
+.chat-bubble.user{flex-direction:row-reverse}
+.bubble-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--mint),var(--mint2));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.bubble-av.u{background:var(--bg2);border:1.5px solid var(--border);font-size:13px}
+.bubble-body{max-width:86%;background:var(--surface);border:1.5px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);padding:12px 14px;font-size:13px;color:var(--text);line-height:1.65}
+.chat-bubble.user .bubble-body{background:var(--mint-light);border-color:var(--border2);border-radius:var(--radius) 0 var(--radius) var(--radius);color:var(--mint-dark)}
+.bubble-choices{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.choice-pill{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;color:var(--text2);cursor:pointer;transition:var(--t);font-family:var(--sans)}
+.choice-pill:hover:not(:disabled){border-color:var(--mint);background:var(--mint-light);color:var(--mint-dark)}
+.choice-pill:disabled{opacity:.45;cursor:default}
+.choice-pill.picked{background:var(--mint);border-color:var(--mint);color:#fff}
+.typing-dots{display:flex;gap:5px;align-items:center;padding:3px 0}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:dotBlink 1.4s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+.ai-entry-section{margin:20px 0 8px}
+.ai-entry-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 20px;background:transparent;border:1.5px dashed var(--border2);border-radius:var(--radius);color:var(--text3);font-size:13px;font-family:var(--sans);cursor:pointer;transition:var(--t)}
+.ai-entry-btn:hover{border-color:var(--mint);color:var(--mint-dark);background:var(--mint-light)}
+.ai-entry-btn.conflict{border-color:var(--amber);color:#92400E}
+.ai-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--mint),var(--mint2));display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.ai-final-label{font-size:11px;font-weight:700;color:var(--mint-dark);margin-bottom:6px}
+.ai-final-block{margin-bottom:10px}
+/* 조문 배지 */
+.law-badges-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.law-badge{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);border:1px solid;text-decoration:none;transition:var(--t);cursor:pointer}
+.law-badge:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.law-badge.공직선거법{background:#e8f5ef;color:#0a5c35;border-color:#9FE1CB}
+.law-badge.정치자금법{background:#EFF6FF;color:#1E40AF;border-color:#93C5FD}
+.law-badge.정당법{background:#F5F3FF;color:#5B21B6;border-color:#C4B5FD}
+.law-badge.기타{background:#F3F4F6;color:#374151;border-color:#D1D5DB}
+.law-badge .lbstar{color:#f59e0b;margin-right:1px}
+/* 실무안내서 카드 */
+.guide-cards-wrap{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.guide-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:var(--t)}
+.guide-card:hover{border-color:var(--mint);background:var(--surface2)}
+.guide-card-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.guide-book-tag{font-size:10px;font-family:var(--mono);background:var(--mint-light);color:var(--mint-dark);border:1px solid var(--border2);padding:2px 8px;border-radius:10px;white-space:nowrap}
+.guide-trust{font-size:10px;color:var(--text3)}
+.guide-trust.hi{color:#d97706;font-weight:600}
+.guide-card-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;line-height:1.4}
+.guide-card-summary{font-size:11px;color:var(--text3);line-height:1.6;overflow:hidden;max-height:40px;transition:max-height .3s ease}
+.guide-card-summary.open{max-height:400px}
+.guide-expand-lbl{font-size:10px;color:var(--mint);margin-top:5px;font-family:var(--mono)}
+</style>
+<script id="qa-data" type="application/json"></script>
+<script id="li-data" type="application/json">{"meta":{"description":"\uc5c5\ubb34\uc720\ud615\ubcc4 \uc720\uad00\ubc95\ub839 \ub9e4\ud551 + \uc870\ubb38\ub9e4\ud551 (\ubc95\ub9ac\uc801 \uac80\ud1a0 \uc644\ub8cc v3.0)","updated":"2026-04-04","version":"3.0","changes":["v2.0 \u2192 v3.0: \uc870\ubb38\ub9e4\ud551 \uc0c1\uc138\ud654 (\uc5c5\ubb34\uc720\ud615\ubcc4 \ud575\uc2ec\uc870\ubb38 + \uc5f0\uad00\uaddc\uce59\uc870\ubb38 \ucd94\uac00)","\ud30c\uc77c\uba85 \uc804\uccb4 \uc2e4\uc81c \uacbd\ub85c\ub85c \uc218\uc815 + available: true \ucc98\ub9ac","\uc815\ub2f9\ubcf4\uc870\uae08\uac10\uc561\uaddc\uc815, \uc8fc\ubbfc\uc18c\ud658\ubc95\uc2dc\ud589\ub839, \uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4\uaddc\uce59 \uc2e0\uaddc \ucd94\uac00","\uae30\ubd80\ud589\uc704: \uc815\uce58\uc790\uae08\ubc95 \uc81c45\uc870(\ubc8c\uce59) \u2192 \uc81c31\uc870~\uc81c32\uc870(\uc81c\ud55c\uaddc\uc815)\uc73c\ub85c \uc218\uc815","\uc120\uac70\uc6b4\ub3d9\uae30\uac04: \uacf5\uc9c1\uc120\uac70\ubc95 \uc81c33\uc870(\uc120\uac70\uae30\uac04 \uc815\uc758) \ucd94\uac00","\uc778\ud130\ub137/SNS: \uacf5\uc9c1\uc120\uac70\ubc95 \uc81c82\uc870\uc7587(\uc2e4\uba85\ud655\uc778) \ucd94\uac00","\ud6c4\ubcf4\uc790\ub4f1\ub85d/\uc790\uaca9: \uacf5\uc9c1\uc120\uac70\ubc95 \uc81c16\uc870~\uc81c19\uc870(\ud53c\uc120\uac70\uad8c) \ucd94\uac00","\ud68c\uacc4\ucc98\ub9ac: \uc815\uce58\uc790\uae08\ubc95 \uc81c36\uc870~\uc81c39\uc870(\uc9c0\ucd9c\u00b7\uc7a5\ubd80) \ucd94\uac00","\uc815\ub2f9\ub4f1\ub85d/\ud65c\ub3d9: \uc815\ub2f9\ubc95 \uc81c17\uc870~\uc81c44\uc870(\ud65c\ub3d9 \uc804\ubc18) \ucd94\uac00","\ub2f9\ub0b4\uacbd\uc120: \uc815\ub2f9\ubc95 \uc81c29\uc870~\uc81c32\uc870 \uc870\ubb38 \ud2b9\uc815"]},"article_mapping":{"\uae30\ubd80\ud589\uc704":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c112\uc870~\uc81c115\uc870"],"\uc815\uce58\uc790\uae08\ubc95":["\uc81c31\uc870~\uc81c32\uc870"],"\uc8fc\ubbfc\ud22c\ud45c\ubc95":["\uc81c28\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c32\uc870~\uc81c37\uc870","\uc81c59\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c17\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c50\uc870~\uc81c52\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c16\uc870"]}},"\uc120\uac70\uc6b4\ub3d9_\ubc29\ubc95\uc218\ub2e8":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c58\uc870~\uc81c68\uc870\uc7583"],"\uc8fc\ubbfc\ud22c\ud45c\ubc95":["\uc81c19\uc870~\uc81c23\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c24\uc870~\uc81c30\uc870\uc7584"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c18\uc870~\uc81c19\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960 \uc2dc\ud589\ub839":["\uc81c6\uc870~\uc81c8\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c25\uc870~\uc81c49\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c12\uc870~\uc81c15\uc870\uc7587"],"\uc8fc\ubbfc\ud22c\ud45c\uad00\ub9ac\uaddc\uce59":["\ud574\ub2f9\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uad00\ub9ac\uaddc\uce59":["\ud574\ub2f9\uc870"]}},"\uc120\uac70\uc6b4\ub3d9_\uae30\uac04":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c33\uc870","\uc81c59\uc870"],"\uc8fc\ubbfc\ud22c\ud45c\ubc95":["\uc81c19\uc870\uc81c1\ud56d"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c13\uc870","\uc81c24\uc870\uc81c2\ud56d"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c18\uc870\uc81c1\ud56d"]}},"\uc778\ud130\ub137SNS":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c82\uc870\uc7584~\uc81c82\uc870\uc7586","\uc81c82\uc870\uc7587"],"\uc8fc\ubbfc\ud22c\ud45c\ubc95":["\uc81c19\uc870\uc7582"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c29\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c19\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960 \uc2dc\ud589\ub839":["\uc81c8\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c45\uc870\uc7583"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c14\uc870"]}},"\ud6c4\uc6d0\ud68c\ud6c4\uc6d0\uae08":{"\ud575\uc2ec\ubc95\ub960":{"\uc815\uce58\uc790\uae08\ubc95":["\uc81c6\uc870~\uc81c21\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc815\uce58\uc790\uae08\uc0ac\ubb34\uad00\ub9ac \uaddc\uce59":["\uc804\ubc18"],"\uc815\ub2f9\uc5d0 \ub300\ud55c \ubcf4\uc870\uae08\uc758 \uc9c0\uae09 \uc911\ub2e8 \ubc0f \uac10\uc561\uc5d0 \uad00\ud55c \uaddc\uc815":["\uc81c2\uc870~\uc81c5\uc870"]}},"\uc120\uac70\ube44\uc6a9":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c119\uc870~\uc81c127\uc870"],"\uc815\uce58\uc790\uae08\ubc95":["\uc81c34\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c78\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c26\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c56\uc870~\uc81c64\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c39\uc870~\uc81c44\uc870"]}},"\ud68c\uacc4\ucc98\ub9ac":{"\ud575\uc2ec\ubc95\ub960":{"\uc815\uce58\uc790\uae08\ubc95":["\uc81c36\uc870~\uc81c44\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc815\uce58\uc790\uae08\uc0ac\ubb34\uad00\ub9ac \uaddc\uce59":["\uc804\ubc18"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c46\uc870"]}},"\ud6c4\ubcf4\uc790_\ub4f1\ub85d\uc790\uaca9":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c16\uc870~\uc81c19\uc870","\uc81c49\uc870~\uc81c57\uc870\uc7582"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c12\uc870","\uc81c18\uc870~\uc81c19\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c20\uc870~\uc81c24\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c9\uc870~\uc81c10\uc870"],"\uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4\uc758 \uacf5\uc9c1\uc120\uac70\ud6c4\ubcf4\uc790 \ub4f1\ub85d\uc2e0\uccad \ub4f1\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c3\uc870"]}},"\uc608\ube44\ud6c4\ubcf4\uc790":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c60\uc870\uc7582~\uc81c60\uc870\uc7583"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c24\uc870\uc7582~\uc81c24\uc870\uc7583"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c26\uc870~\uc81c27\uc870\uc7584"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c11\uc870\uc7582~\uc81c11\uc870\uc7583"],"\uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4\uc758 \uacf5\uc9c1\uc120\uac70\ud6c4\ubcf4\uc790 \ub4f1\ub85d\uc2e0\uccad \ub4f1\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c3\uc870"]}},"\ud22c\ud45c\uac1c\ud45c":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c151\uc870~\uc81c181\uc870"],"\uc8fc\ubbfc\ud22c\ud45c\ubc95":["\uc81c14\uc870~\uc81c25\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c39\uc870~\uc81c53\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c20\uc870~\uc81c21\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c65\uc870~\uc81c106\uc870"],"\uc8fc\ubbfc\ud22c\ud45c\uad00\ub9ac\uaddc\uce59":["\uc81c20\uc870~\uc81c32\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uad00\ub9ac\uaddc\uce59":["\uc81c18\uc870~\uc81c33\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c17\uc870~\uc81c32\uc870"]}},"\ub2f9\uc120\ubb34\ud6a8":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c187\uc870~\uc81c192\uc870","\uc81c263\uc870~\uc81c265\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c55\uc870","\uc81c56\uc870","\uc81c70\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":["\uc81c22\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960 \uc2dc\ud589\ub839":["\uc81c9\uc870"],"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\ud574\ub2f9\uc870"],"\uc8fc\ubbfc\uc18c\ud658\uad00\ub9ac\uaddc\uce59":["\uc81c34\uc870"],"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c33\uc870"]}},"\uc815\ub2f9_\ub4f1\ub85d\ud65c\ub3d9":{"\ud575\uc2ec\ubc95\ub960":{"\uc815\ub2f9\ubc95":["\uc81c4\uc870~\uc81c44\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uc815\ub2f9\uc0ac\ubb34\uad00\ub9ac\uaddc\uce59":["\uc804\ubc18"],"\uc815\ub2f9\uc5d0 \ub300\ud55c \ubcf4\uc870\uae08\uc758 \uc9c0\uae09 \uc911\ub2e8 \ubc0f \uac10\uc561\uc5d0 \uad00\ud55c \uaddc\uc815":["\uc81c2\uc870~\uc81c5\uc870"]}},"\ub2f9\ub0b4\uacbd\uc120":{"\ud575\uc2ec\ubc95\ub960":{"\uacf5\uc9c1\uc120\uac70\ubc95":["\uc81c57\uc870\uc7582~\uc81c57\uc870\uc75810"],"\uc815\ub2f9\ubc95":["\uc81c29\uc870~\uc81c32\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":["\uc81c24\uc870\uc7582~\uc81c24\uc870\uc7587"]}},"\uc704\ud0c1\uc120\uac70":{"\ud575\uc2ec\ubc95\ub960":{"\uc704\ud0c1\uc120\uac70\ubc95":["\uc81c1\uc870~\uc81c11\uc870"]},"\uc5f0\uad00\uaddc\uce59":{"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":["\uc81c1\uc870~\uc81c6\uc870"]}}},"laws":{"\uacf5\uc9c1\uc120\uac70\ubc95":{"file":"\uacf5\uc9c1\uc120\uac70\ubc95_\ubc95\ub960__\uc81c21488\ud638__20260319_.pdf","available":true,"type":"\ubc95\ub960"},"\uc815\uce58\uc790\uae08\ubc95":{"file":"\uc815\uce58\uc790\uae08\ubc95\ubc95\ub960\uc81c21065\ud63820251001.pdf","available":true,"type":"\ubc95\ub960"},"\uc704\ud0c1\uc120\uac70\ubc95":{"file":"\uacf5\uacf5\ub2e8\uccb4\ub4f1_\uc704\ud0c1\uc120\uac70\uc5d0_\uad00\ud55c_\ubc95\ub960\ubc95\ub960\uc81c21028\ud63820250814.pdf","available":true,"type":"\ubc95\ub960"},"\uc815\ub2f9\ubc95":{"file":"\uc815\ub2f9\ubc95\ubc95\ub960\uc81c19922\ud63820240102.pdf","available":true,"type":"\ubc95\ub960"},"\uc8fc\ubbfc\ud22c\ud45c\ubc95":{"file":"\uc8fc\ubbfc\ud22c\ud45c\ubc95\ubc95\ub960\uc81c18849\ud63820230427.pdf","available":true,"type":"\ubc95\ub960"},"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960":{"file":"\uc8fc\ubbfc\uc18c\ud658\uc5d0_\uad00\ud55c_\ubc95\ub960\ubc95\ub960\uc81c17893\ud63820220113.pdf","available":true,"type":"\ubc95\ub960"},"\uc8fc\ubbfc\uc18c\ud658\uc5d0 \uad00\ud55c \ubc95\ub960 \uc2dc\ud589\ub839":{"file":"\uc8fc\ubbfc\uc18c\ud658\uc5d0_\uad00\ud55c_\ubc95\ub960_\uc2dc\ud589\ub839\ub300\ud1b5\ub839\ub839\uc81c26774\ud63820151230.pdf","available":true,"type":"\uc2dc\ud589\ub839"},"\uc815\ub2f9\uc5d0 \ub300\ud55c \ubcf4\uc870\uae08\uc758 \uc9c0\uae09 \uc911\ub2e8 \ubc0f \uac10\uc561\uc5d0 \uad00\ud55c \uaddc\uc815":{"file":"\uc815\ub2f9\uc5d0\ub300\ud55c\ubcf4\uc870\uae08\uc758\uc9c0\uae09\uc911\ub2e8\ubc0f\uac10\uc561\uc5d0\uad00\ud55c\uaddc\uc815\ub300\ud1b5\ub839\ub839\uc81c17409\ud63820011114.pdf","available":true,"type":"\ub300\ud1b5\ub839\ub839"},"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59":{"file":"\uacf5\uc9c1\uc120\uac70\uad00\ub9ac\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00637\ud63820251205.pdf","available":true,"type":"\uaddc\uce59"},"\uc815\uce58\uc790\uae08\uc0ac\ubb34\uad00\ub9ac \uaddc\uce59":{"file":"\uc815\uce58\uc790\uae08\uc0ac\ubb34\uad00\ub9ac_\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00619\ud63820250220.pdf","available":true,"type":"\uaddc\uce59"},"\uacf5\uacf5\ub2e8\uccb4\ub4f1 \uc704\ud0c1\uc120\uac70\uc5d0 \uad00\ud55c \uaddc\uce59":{"file":"\uacf5\uacf5\ub2e8\uccb4\ub4f1_\uc704\ud0c1\uc120\uac70\uc5d0_\uad00\ud55c_\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00642\ud63820260123.pdf","available":true,"type":"\uaddc\uce59"},"\uc815\ub2f9\uc0ac\ubb34\uad00\ub9ac\uaddc\uce59":{"file":"\uc815\ub2f9\uc0ac\ubb34\uad00\ub9ac\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00639\ud63820251229.pdf","available":true,"type":"\uaddc\uce59"},"\uc8fc\ubbfc\ud22c\ud45c\uad00\ub9ac\uaddc\uce59":{"file":"\uc8fc\ubbfc\ud22c\ud45c\uad00\ub9ac\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00629\ud63820250620.pdf","available":true,"type":"\uaddc\uce59"},"\uc8fc\ubbfc\uc18c\ud658\uad00\ub9ac\uaddc\uce59":{"file":"\uc8fc\ubbfc\uc18c\ud658\uad00\ub9ac\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00617\ud63820250116.pdf","available":true,"type":"\uaddc\uce59"},"\uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4\uc758 \uacf5\uc9c1\uc120\uac70\ud6c4\ubcf4\uc790 \ub4f1\ub85d\uc2e0\uccad \ub4f1\uc5d0 \uad00\ud55c \uaddc\uce59":{"file":"\uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4\uc758_\uacf5\uc9c1\uc120\uac70\ud6c4\ubcf4\uc790_\ub4f1\ub85d\uc2e0\uccad_\ub4f1\uc5d0_\uad00\ud55c_\uaddc\uce59\uc911\uc559\uc120\uac70\uad00\ub9ac\uc704\uc6d0\ud68c\uaddc\uce59\uc81c00480\ud63820180309.pdf","available":true,"type":"\uaddc\uce59"}},"guidebooks":{"\uc120\uac70\ube44\uc6a9\ubcf4\uc804\uc548\ub0b4\uc11c":{"file":"_\ucd5c\uc885_\uc81c9\ud68c_\uc804\uad6d\ub3d9\uc2dc\uc9c0\ubc29\uc120\uac70_\uc120\uac70\ube44\uc6a9\ubcf4\uc804\uc548\ub0b4\uc11c_\ubb38\uc11c\uc6a9_\ucd5c\uc885_.pdf","available":true,"type":"\uc2e4\ubb34\uc548\ub0b4\ucc45\uc790","\uad00\ub828\uc5c5\ubb34":["\uc120\uac70\ube44\uc6a9"]},"\uc815\uce58\uc790\uae08\ud68c\uacc4\uc2e4\ubb34":{"file":"\uc81c9\ud68c_\uc9c0\ubc29\uc120\uac70_\uc815\uce58\uc790\uae08_\ud68c\uacc4\uc2e4\ubb34__\uc608\ube44_\ud6c4\ubcf4\uc790_\ubc0f_\uadf8_\ud6c4\uc6d0\ud68c\uc6a9.pdf","available":true,"type":"\uc2e4\ubb34\uc548\ub0b4\ucc45\uc790","\uad00\ub828\uc5c5\ubb34":["\ud68c\uacc4\ucc98\ub9ac","\ud6c4\uc6d0\ud68c\ud6c4\uc6d0\uae08","\uc608\ube44\ud6c4\ubcf4\uc790"]},"\uc815\uce58\uc790\uae08\uac15\uc758\ubcf4\ucda9\uc790\ub8cc":{"file":"\uc81c9\ud68c_\uc9c0\ubc29\uc120\uac70_\uc815\uce58\uc790\uae08_\uac15\uc758\ubcf4\ucda9\uc124\uba85\uc790\ub8cc.pdf","available":true,"type":"\uc2e4\ubb34\uc548\ub0b4\ucc45\uc790","\uad00\ub828\uc5c5\ubb34":["\ud68c\uacc4\ucc98\ub9ac","\ud6c4\uc6d0\ud68c\ud6c4\uc6d0\uae08","\uc120\uac70\ube44\uc6a9"]}}}</script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-icon">⚖</div>
+    <div class="logo-text">
+      <h1>선거법 유권해석 AI</h1>
+      <p>NEC DB · 법령 · AI 복합 판단</p>
+    </div>
+  </div>
+  <div class="step-bar" id="stepBar">
+    <div class="step-dot active" id="dot0" onclick="goStep(0)">1</div>
+    <div class="step-line" id="line01"></div>
+    <div class="step-dot" id="dot1" onclick="goStep(1)">2</div>
+    <div class="step-line" id="line12"></div>
+    <div class="step-dot" id="dot2" onclick="goStep(2)">3</div>
+    <div class="step-line" id="line23"></div>
+    <div class="step-dot" id="dot3" onclick="goStep(3)">4</div>
+    <div class="step-line" id="line34"></div>
+    <div class="step-dot" id="dot4" onclick="goStep(4)">5</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="api-wrap">
+      <span class="api-label">API</span>
+      <input class="api-input" id="apiKey" type="password" placeholder="sk-ant-xxxx" autocomplete="off">
+      <span class="api-status no" id="apiStatus">미입력</span>
+    </div>
+  </div>
+</header>
+
+<div class="app-body">
+  <div class="slide-wrap">
+    <div class="slide-track" id="slideTrack">
+
+      <!-- 패널0: 선거유형 -->
+      <div class="slide-panel" id="panel0">
+        <div class="panel-title">업무 분류 선택</div>
+        <div class="panel-sub">선거절차 또는 지도업무를 선택하세요</div>
+        <div id="electionGrid"></div>
+      </div>
+
+      <!-- 패널1: 업무영역 -->
+      <div class="slide-panel" id="panel1">
+        <button class="back-btn" onclick="goStep(0)">← 업무 분류</button>
+        <div class="panel-title">세부 분류 선택</div>
+        <div class="panel-sub">해당하는 업무를 선택하세요</div>
+        <div class="choice-grid" id="taskGrid2"></div>
+      </div>
+
+      <!-- 패널2: 세부분류 -->
+      <div class="slide-panel" id="panel2">
+        <div class="panel-title">세부분류 선택</div>
+        <div class="panel-sub">구체적인 업무 유형을 선택하세요</div>
+        <div class="choice-grid" id="taskGrid"></div>
+      </div>
+
+      <!-- 패널3: 판단변수 -->
+      <div class="slide-panel" id="panel3">
+        <button class="back-btn" onclick="S.step=1;slide();updateBar();updateBc()">← 세부 분류</button>
+        <div class="panel-title">상황 입력</div>
+        <div class="panel-sub">핵심 사실관계를 선택하세요</div>
+        <div class="preview-bar" id="previewBar">
+          <span class="preview-count" id="previewCount">— 건</span>
+          <div class="preview-dist" id="previewDist"></div>
+          <div class="preview-labels" id="previewLabels"></div>
+        </div>
+        <div class="chat-var-area" id="chatVarArea"></div>
+        <div id="varSubmitWrap" style="display:none;margin-top:16px;flex-shrink:0">
+          <div class="art-search-wrap">
+            <div class="art-search-hd" onclick="toggleArtSearch()">
+              <span>🔍</span><span>관련 조문 직접 검색 (선택사항)</span>
+              <span id="artArrow" style="margin-left:auto;color:var(--text3)">▸</span>
+            </div>
+            <div class="art-search-bd" id="artSearchBd">
+              <div class="search-row">
+                <input class="search-input" id="artKw" placeholder="키워드 (예: 기부행위, 현수막)"
+                  onkeydown="if(event.key==='Enter')searchArt()">
+                <button class="btn-search" onclick="searchArt()">검색</button>
+              </div>
+              <div class="art-results" id="artResults"></div>
+              <div class="sel-articles" id="selArts"></div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="form-label">추가 설명 <span class="opt">선택</span></div>
+            <textarea class="form-textarea" id="extraDesc" placeholder="구체적인 상황이나 특이사항을 간략히 기술하세요"></textarea>
+          </div>
+          <button class="btn-submit" onclick="submitQuery()">유권해석 검색하기 →</button>
+        </div>
+      </div>
+      <!-- 패널4: 로딩 -->
+      <div class="slide-panel" id="panel4" style="align-items:center;justify-content:center">
+        <div style="text-align:center">
+          <div class="spin"></div>
+          <div style="font-size:16px;font-weight:600;color:var(--mint-dark)" id="loadMsg">법령 및 유권해석 탐색 중...</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)" id="loadSub">잠시만 기다려주세요</div>
+        </div>
+      </div>
+
+      <!-- 패널5: 결과 -->
+      <div class="slide-panel" id="panel5" style="padding:0">
+        <div class="result-wrap" id="resultWrap"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 사이드바 -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-hd">
+      <div>
+        <div class="sb-law" id="sbLaw"></div>
+        <div class="sb-art" id="sbArt"></div>
+        <div class="sb-tit" id="sbTit"></div>
+      </div>
+      <button class="btn-sb-close" onclick="closeSb()">✕</button>
+    </div>
+    <div class="sb-body" id="sbBody">조문을 클릭하면 원문이 표시됩니다.</div>
+    <div class="sb-ft">
+      <button class="btn-sb-act" onclick="copySb()">📋 복사</button>
+      <button class="btn-sb-act" onclick="openLaw()">🔗 법제처</button>
+    </div>
+  </div>
+</div>
+
+<button class="hist-btn" onclick="toggleHist()" title="검색 히스토리">📋</button>
+<div class="hist-panel" id="histPanel">
+  <div class="hist-hd">최근 검색 히스토리</div>
+  <div class="hist-list" id="histList"></div>
+</div>
+
+<script>
+// ── CONFIG ──
+const CFG = {
+  api_key: null, api_enabled: false,
+  temperature: 0.3, model: 'claude-sonnet-4-5'
+}
+
+// ── 필터 트리 ──
+// ── 대분류 ──
+const MAIN_CATS = [
+  {id:'절차', name:'선거절차', icon:'🗳️', desc:'후보자 등록·투표·개표 등 선거 진행 절차'},
+  {id:'지도', name:'지도',    icon:'📋', desc:'선거운동·기부행위·정치자금 등 규제·지도'},
+]
+
+// ── 세부분류 ──
+const TASKS = {
+  절차: [
+    {id:'후보자_등록자격', name:'후보자 등록/자격', icon:'📝'},
+    {id:'예비후보자',      name:'예비후보자',       icon:'👤'},
+    {id:'당내경선',        name:'당내경선',         icon:'🏁'},
+    {id:'투표개표',        name:'투표/개표',         icon:'✅'},
+    {id:'당선무효',        name:'당선/무효',         icon:'⚠️'},
+  ],
+  지도: [
+    {id:'선거운동_방법수단', name:'선거운동 방법/수단', icon:'📢'},
+    {id:'선거운동_기간',     name:'선거운동 기간',      icon:'📅'},
+    {id:'인터넷SNS',         name:'인터넷/SNS',         icon:'💻'},
+    {id:'기부행위',          name:'기부행위',           icon:'💰'},
+    {id:'선거비용',          name:'선거비용/회계',      icon:'💵'},
+    {id:'후원회후원금',      name:'후원회/정치자금',    icon:'💳'},
+    {id:'정당_등록활동',     name:'정당 등록/활동',     icon:'🏛️'},
+    {id:'위탁선거',          name:'위탁선거',           icon:'🤝'},
+  ],
+}
+
+// ── 선거유형 (세부 필터, 선택사항) ──
+const ELECTION_TYPES = [
+  {id:'',        name:'전체 (기본)'},
+  {id:'대통령',  name:'대통령선거'},
+  {id:'국회의원',name:'국회의원선거'},
+  {id:'지방',    name:'지방선거'},
+  {id:'재보궐',  name:'재보궐선거'},
+  {id:'위탁',    name:'위탁선거'},
+  {id:'주민투표',name:'주민투표'},
+  {id:'주민소환',name:'주민소환'},
+]
+
+// ── 판단변수 ──
+const VARS = {
+  '기부행위':{'행위주체':['후보자','예비후보자','선거사무원','일반인','공무원','법인·단체','기타'],'수혜대상':['유권자','선거관계자','불특정다수','특정인','기타'],'행위방법':['금품','음식물','향응','재산상이익','기타'],'시기':['선거운동기간 전','선거운동기간 중','투표일','상시','기타']},
+  '선거운동_방법수단':{'행위주체':['후보자','예비후보자','선거사무원','일반인','공무원','기타'],'수단':['문자메시지','SNS·인터넷','전화','현수막','명함','어깨띠','집회·연설','기타'],'대상범위':['불특정다수','특정인','지지자','기타'],'시기':['선거운동기간 전','선거운동기간 중','투표일','기타']},
+  '선거운동_기간':{'행위유형':['선거운동 행위','홍보물 배부','집회·모임','기타'],'행위주체':['후보자','예비후보자','일반인','공무원','기타'],'시기':['선거기간 전','선거기간 중','투표일 당일','기타']},
+  '인터넷SNS':{'행위주체':['후보자','예비후보자','일반인','공무원','언론사','기타'],'플랫폼':['카카오톡','페이스북·인스타','유튜브','블로그·카페','기타 SNS','기타'],'행위유형':['게시물 작성','공유·리트윗','댓글','광고','라이브방송','기타'],'시기':['선거운동기간 전','선거운동기간 중','투표일','상시','기타']},
+  '후원회후원금':{'후원인유형':['개인','법인·단체','외국인','익명','기타'],'후원방법':['계좌이체','신용카드','현금','기타'],'금액':['10만원 이하','10만~120만원','120만원 초과','한도 불명확'],'후원회유형':['국회의원','지자체장','예비후보자','대통령후보자','기타']},
+  '선거비용':{'비용유형':['선거사무원 수당','홍보물 제작','시설·임차비','광고비','기타'],'지출주체':['후보자','선거사무장','회계책임자','기타'],'처리구분':['지출','보전청구','회계보고','장부기재','기타']},
+  '후보자_등록자격':{'자격유형':['피선거권','결격사유','기탁금','등록서류','기타']},
+  '예비후보자':{'행위유형':['등록신청','선거운동방법','명함배부','선거사무소','기타'],'시기':['예비후보자 등록 후','등록 전','기타']},
+  '투표개표':{'단계':['투표소','개표소','전자개표','이의신청','기타'],'주체':['선거인','선거관리위원','참관인','기타']},
+  '당선무효':{'사유유형':['득표수 미달','선거범죄','기부행위','기타'],'처리단계':['당선인 결정','이의제기','소송','기타']},
+  '정당_등록활동':{'활동유형':['창당·등록','당원 가입','합당','해산','보조금','기타']},
+  '당내경선':{'경선방법':['당원투표','여론조사','혼합','기타'],'단계':['경선 공고','후보자등록','투표','결과공표','기타']},
+  '위탁선거':{'단체유형':['농협','수협','산림조합','새마을금고','기타'],'업무유형':['후보자등록','선거운동','투표개표','기타']},
+}
+
+// ── 상태 ──
+
+let S = {step:0,main:null,task:null,elecType:'',vars:{},arts:[],lawIndex:null,lawsText:null,qaData:null}
+
+// ── 초기화 ──
+async function init(){
+  const k=localStorage.getItem('elaw_key')
+  if(k){document.getElementById('apiKey').value=k;CFG.api_key=k;CFG.api_enabled=true;setApiSt(true)}
+  document.getElementById('apiKey').addEventListener('input',function(){
+    const v=this.value.trim();CFG.api_key=v||null;CFG.api_enabled=!!v;setApiSt(!!v)
+    if(v)localStorage.setItem('elaw_key',v)
+  })
+  renderMainCats()  // 카드 즉시 표시
+  renderHist()
+  await loadData()
+  renderMainCats()  // DB 로딩 후 배지 업데이트
+}
+function setApiSt(ok){const e=document.getElementById('apiStatus');e.textContent=ok?'✓ 연결됨':'미입력';e.className='api-status '+(ok?'ok':'no')}
+async function loadData(){
+  if(S.qaData && S.lawIndex){
+    _initApp()
+    return
+  }
+  _showDbUpload()
+}
+
+function _initApp(){
+  renderMainCats()
+  if(S.step===1) renderTasks()
+  fetch('laws_text.json').then(r=>r.json()).then(d=>{S.lawsText=d}).catch(()=>{})
+}
+
+function _showDbUpload(){
+  // 기존 앱 구조는 건드리지 않고 overlay로 덮음
+  const overlay = document.createElement('div')
+  overlay.id = 'db-upload-overlay'
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:40px;background:var(--bg);'
+  overlay.innerHTML = `
+    <div style="font-size:56px;">🗄️</div>
+    <div style="text-align:center;">
+      <h2 style="font-size:22px;font-weight:700;color:var(--mint-dark);margin-bottom:10px;">DB 파일 업로드</h2>
+      <p style="font-size:13px;color:var(--text3);line-height:1.6;">아래 두 파일을 선택하면 자동으로 앱이 시작됩니다</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px;">
+      <label id="qa-upload-label" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--surface);border:2px dashed var(--border2);border-radius:var(--radius);cursor:pointer;transition:var(--t);">
+        <span style="font-size:24px;">📂</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);" id="qa-file-name">QA DB 선택</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">nec_qa_merged.json</div>
+        </div>
+        <input type="file" accept=".json" style="display:none" onchange="window._loadQaFile(this)">
+      </label>
+      <label id="li-upload-label" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--surface);border:2px dashed var(--border2);border-radius:var(--radius);cursor:pointer;transition:var(--t);">
+        <span style="font-size:24px;">📂</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);" id="li-file-name">법령 인덱스 선택</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">law_index.json</div>
+        </div>
+        <input type="file" accept=".json" style="display:none" onchange="window._loadLiFile(this)">
+      </label>
+    </div>
+    <div id="db-upload-status" style="font-size:12px;color:var(--text3);font-family:var(--mono);text-align:center;">0 / 2 파일 로드됨</div>
+  `
+  document.body.appendChild(overlay)
+}
+
+window._loadQaFile = function(input){
+  const file = input.files[0]
+  if(!file) return
+  const label = document.querySelector('#qa-upload-label')
+  document.getElementById('qa-file-name').textContent = '⏳ 로딩 중...'
+  if(label) label.style.borderColor = 'var(--amber)'
+  const reader = new FileReader()
+  reader.onload = e => {
+    try{
+      let data = JSON.parse(e.target.result)
+      // 필드 정규화: work_types → tags.업무유형, articles → tags.관련조문
+      const first = data[0] || {}
+      const needsNorm = !first.tags && (first.work_types !== undefined || first.articles !== undefined)
+      if(needsNorm){
+        data = data.map(qa => {
+          const workTypes = Array.isArray(qa.work_types)
+            ? qa.work_types
+            : (typeof qa.work_types === 'string' && qa.work_types ? qa.work_types.split(',').map(s=>s.trim()) : [])
+          const articles = Array.isArray(qa.articles)
+            ? qa.articles
+            : (typeof qa.articles === 'string' && qa.articles ? qa.articles.split(',').map(s=>s.trim()) : [])
+          // 주체: variables가 배열이면 그대로 사용, 딕셔너리면 키에서 추출
+          let subjs = []
+          if(Array.isArray(qa.variables)){
+            subjs = qa.variables.filter(v => v && v !== '미분류')
+          } else if(qa.variables && typeof qa.variables === 'object'){
+            subjs = qa.variables['행위주체'] || qa.variables['주체'] || []
+            if(!Array.isArray(subjs)) subjs = [subjs]
+          }
+          return {
+            ...qa,
+            conclusion: qa.conclusion || '',
+            tags: {
+              '업무유형': workTypes,
+              '주체': subjs,
+              '관련조문': articles
+            }
+          }
+        })
+      }
+      S.qaData = data
+      document.getElementById('qa-file-name').textContent = '✅ ' + S.qaData.length.toLocaleString() + '건 로드 완료' + (needsNorm ? ' (변환됨)' : '')
+      if(label) label.style.borderColor = 'var(--mint)'
+      window._checkDbReady()
+    }catch(err){
+      document.getElementById('qa-file-name').textContent = '❌ 파싱 오류: ' + err.message
+      if(label) label.style.borderColor = 'var(--red)'
+    }
+  }
+  reader.readAsText(file)
+}
+
+window._loadLiFile = function(input){
+  const file = input.files[0]
+  if(!file) return
+  const label = document.querySelector('#li-upload-label')
+  document.getElementById('li-file-name').textContent = '⏳ 로딩 중...'
+  if(label) label.style.borderColor = 'var(--amber)'
+  const reader = new FileReader()
+  reader.onload = e => {
+    try{
+      S.lawIndex = JSON.parse(e.target.result)
+      document.getElementById('li-file-name').textContent = '✅ 법령 인덱스 로드 완료'
+      if(label) label.style.borderColor = 'var(--mint)'
+      window._checkDbReady()
+    }catch(err){
+      document.getElementById('li-file-name').textContent = '❌ 파싱 오류'
+      if(label) label.style.borderColor = 'var(--red)'
+    }
+  }
+  reader.readAsText(file)
+}
+
+window._checkDbReady = function(){
+  const count = (S.qaData ? 1 : 0) + (S.lawIndex ? 1 : 0)
+  const statusEl = document.getElementById('db-upload-status')
+  if(statusEl) statusEl.textContent = count + ' / 2 파일 로드됨'
+  if(!S.qaData || !S.lawIndex) return
+  if(statusEl) statusEl.textContent = '✅ 모두 로드! 앱 시작 중...'
+  setTimeout(()=>{
+    const overlay = document.getElementById('db-upload-overlay')
+    if(overlay) overlay.remove()
+    _initApp()
+  }, 600)
+}
+
+// ── 슬라이드 ──
+function goStep(s){if(s>S.step)return;S.step=s;slide();updateBar();updateBc()}
+function nextStep(){S.step++;slide();updateBar();updateBc()}
+function slide(){document.getElementById('slideTrack').style.transform=`translateX(-${S.step*(100/6)}%)`}
+function updateBar(){
+  for(let i=0;i<5;i++){
+    const d=document.getElementById('dot'+i)
+    d.className='step-dot'+(i<S.step?' done':'')+(i===S.step?' active':'')
+  }
+  for(let i=0;i<4;i++){
+    const l=document.getElementById('line'+i+(i+1))
+    if(l)l.className='step-line'+(i<S.step?' done':'')
+  }
+}
+function updateBc(){
+  const bc=document.getElementById('breadcrumb'),p=[]
+  if(S.main){const c=MAIN_CATS.find(x=>x.id===S.main);if(c)p.push(`<span onclick="goStep(0)">${c.name}</span>`)}
+  if(S.task){const nm=Object.values(TASKS).flat().find(t=>t.id===S.task);if(nm)p.push(`<span class="sep">›</span><span onclick="()=>{S.step=1;slide();updateBar();}">${nm.name}</span>`)}
+  if(S.elecType)p.push(`<span class="sep">·</span><span style="color:var(--mint)">${ELECTION_TYPES.find(e=>e.id===S.elecType)?.name||''}</span>`)
+  bc.innerHTML=p.join('')
+}
+
+// ── 패널 렌더 ──
+function renderMainCats(){
+  const badge = S.qaData
+    ? `<div style="font-size:11px;color:var(--mint);font-family:var(--mono);margin-bottom:12px">✅ 유권해석 ${S.qaData.length.toLocaleString()}건</div>`
+    : `<div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:12px">⏳ DB 로딩 중...</div>`
+  // 카드는 DB 로딩 여부와 무관하게 즉시 표시
+  // 헤더에 DB 건수 뱃지 표시
+  const hdr = document.querySelector('#panel0 .panel-sub')
+  if(hdr && S.qaData){
+    hdr.innerHTML = `선거절차 또는 지도업무를 선택하세요 <span class="db-badge">✅ ${S.qaData.length.toLocaleString()}건</span>`
+  }
+  document.getElementById('electionGrid').innerHTML = `
+    <div class="main-card" onclick="selMain('절차')">
+      <div class="main-card-num">01</div>
+      <div class="main-card-icon">🗳️</div>
+      <div class="main-card-name">선거절차</div>
+      <div class="main-card-desc">후보자 등록·투표·개표 등 선거 진행 절차</div>
+      <div class="main-card-arrow">→</div>
+    </div>
+    <div class="main-card main-card-guide" onclick="selMain('지도')">
+      <div class="main-card-num">02</div>
+      <div class="main-card-icon">📋</div>
+      <div class="main-card-name">지도</div>
+      <div class="main-card-desc">선거운동·기부행위 정치자금 등 규제·지도</div>
+      <div class="main-card-arrow">→</div>
+    </div>`
+}
+function selMain(id){S.main=id;S.task=null;S.elecType='';renderTasks();S.step=1;slide();updateBar();updateBc()}
+function renderTasks(){
+  const tasks=TASKS[S.main]||[]
+  const html=tasks.map((t,i)=>`
+    <div class="choice-card" onclick="selTask('${t.id}')" style="animation:fadeUp .3s both;animation-delay:${i*40}ms">
+      <div style="font-size:22px;margin-bottom:2px">${t.icon}</div>
+      <div style="font-size:14px;font-weight:600;color:#1a2e28;line-height:1.3">${t.name}</div>
+      ${getTaskHint(t.id)}
+    </div>`).join('')
+  const g1=document.getElementById('taskGrid2')
+  const g2=document.getElementById('taskGrid')
+  if(g1) g1.innerHTML=html
+  if(g2) g2.innerHTML=html
+}
+function selTask(id){S.task=id;S.vars={};S.arts=[];S.step=3;slide();updateBar();updateBc();setTimeout(startVarChat,80)}
+function renderVarForm(){
+  const vars=VARS[S.task]||{}
+  const varHtml = Object.entries(vars).map(([k,opts])=>`
+    <div class="form-section">
+      <div class="form-label">${k}</div>
+      <select class="form-select" onchange="setVar('${k}',this.value)">
+        <option value="">-- 선택하세요 --</option>
+        ${opts.map(o=>`<option value="${o}">${o}</option>`).join('')}
+      </select>
+    </div>`).join('')
+  // 선거유형 선택 (선택사항)
+  const elecHtml = `
+    <div class="form-section" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:4px">
+      <div class="form-label" style="color:var(--text3)">선거유형 <span style="font-weight:400;font-size:10px">(선택사항)</span></div>
+      <select class="form-select" onchange="S.elecType=this.value;updatePreview()">
+        ${ELECTION_TYPES.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+      </select>
+    </div>`
+  document.getElementById('varForm').innerHTML = varHtml + elecHtml
+  updateAcc()
+}
+function setVar(k,v){if(v)S.vars[k]=v;else delete S.vars[k];updateAcc();updatePreview()}
+function updateAcc(){
+  const vars=VARS[S.task]||{},total=Object.keys(vars).length,filled=Object.keys(S.vars).length
+  let p=40
+  if(total>0)p+=Math.round((filled/total)*40)
+  if(S.arts.length>0)p+=10
+  if(document.getElementById('extraDesc')?.value.length>10)p+=10
+  p=Math.min(p,98)
+  document.getElementById('accFill').style.width=p+'%'
+  document.getElementById('accPct').textContent=p+'%'
+}
+
+// ── 조문 검색 ──
+function toggleArtSearch(){
+  const bd=document.getElementById('artSearchBd'),open=bd.classList.toggle('open')
+  document.getElementById('artArrow').textContent=open?'▾':'▸'
+}
+function searchArt(){
+  const kw=document.getElementById('artKw').value.trim()
+  if(!kw||!S.lawsText)return
+  const res=[],laws=S.lawsText.laws||{}
+  let priority=[]
+  if(S.lawIndex&&S.task){
+    const m=S.lawIndex.article_mapping?.[S.task]
+    if(m)priority=[...Object.keys(m.핵심법률||{}),...Object.keys(m.연관규칙||{})]
+  }
+  for(const[name,data]of Object.entries(laws)){
+    for(const a of(data.articles||[])){
+      if(a.text.includes(kw)||a.title.includes(kw)){
+        res.push({law:name,num:a.article_num,title:a.title,preview:a.text.slice(0,80).replace(/\n/g,' '),p:priority.includes(name)?0:1})
+        if(res.length>=20)break
+      }
+    }
+    if(res.length>=20)break
+  }
+  res.sort((a,b)=>a.p-b.p)
+  const c=document.getElementById('artResults')
+  if(!res.length){c.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">검색 결과 없음</div>';return}
+  c.innerHTML=res.map(r=>`
+    <div class="art-item" onclick="addArt('${r.law}','${r.num}','${(r.title||'').replace(/'/g,'')}')">
+      <div class="art-num">${r.law}<br>${r.num}</div>
+      <div class="art-preview">${r.title?'['+r.title+'] ':''}${r.preview}...</div>
+    </div>`).join('')
+}
+function addArt(law,num,title){
+  const key=law+' '+num
+  if(S.arts.find(a=>a.key===key))return
+  S.arts.push({key,law,num,title});renderSelArts();updateAcc()
+}
+function rmArt(key){S.arts=S.arts.filter(a=>a.key!==key);renderSelArts();updateAcc()}
+function renderSelArts(){
+  document.getElementById('selArts').innerHTML=S.arts.map(a=>`
+    <div class="art-tag" onclick="rmArt('${a.key}')">
+      ${a.key}<span class="x">✕</span>
+    </div>`).join('')
+}
+
+// ── 사이드바 ──
+function openSb(law,num){
+  if(!S.lawsText)return
+  const data=S.lawsText.laws?.[law]||S.lawsText.guidebooks?.[law]
+  if(!data)return
+  const art=(data.articles||[]).find(a=>a.article_num===num)
+  if(!art)return
+  document.getElementById('sbLaw').textContent=law
+  document.getElementById('sbArt').textContent=num
+  document.getElementById('sbTit').textContent=art.title?'('+art.title+')':''
+  document.getElementById('sbBody').textContent=art.text
+  document.getElementById('sidebar').dataset.url=`https://www.law.go.kr/법령/${encodeURIComponent(law)}`
+  document.getElementById('sidebar').classList.add('open')
+}
+function openSbByRef(ref){const m=ref.match(/^(.+?)\s+(제\d+조(?:의\d+)?)$/);if(m)openSb(m[1],m[2])}
+function closeSb(){document.getElementById('sidebar').classList.remove('open')}
+function copySb(){navigator.clipboard.writeText(document.getElementById('sbBody').textContent).then(()=>alert('복사됐습니다'))}
+function openLaw(){const u=document.getElementById('sidebar').dataset.url;if(u)window.open(u,'_blank')}
+
+// ── 검색 실행 ──
+async function submitQuery(){
+  const vars=VARS[S.task]||{},req=Object.keys(vars),filled=req.filter(k=>S.vars[k])
+  if(filled.length<Math.min(2,req.length)){alert('판단변수를 최소 2개 이상 선택해주세요.');return}
+  nextStep()
+  try{
+    setLoad('관련 법령 매핑 중...','법령 목록을 추출하고 있습니다')
+    await sleep(300)
+    const mapped=getMapped()
+    setLoad('유권해석 DB 탐색 중...',`${S.qaData?.length||0}건 데이터에서 유사 사례 검색`)
+    await sleep(400)
+    const qa=searchQA()
+    setLoad('단순/복합 판별 중...','조문 충돌 및 유권해석 일치 여부 확인')
+    await sleep(300)
+    const cmplx=classify(mapped,qa)
+    setLoad('결과 정리 중...','거의 다 됐습니다')
+    await sleep(200)
+    renderResult(mapped,qa,cmplx,null)
+    nextStep()
+    saveHist(qa,cmplx,null)
+    // AI 자동 진입 (API 키 있을 때만)
+    if(CFG.api_key){
+      const {verdict}=getVerdict(qa,null)
+      const extraTxt=document.getElementById('extraDesc')?.value||''
+      if(verdict==='절차') setTimeout(()=>startAIException('procedure'),800)
+      else if(cmplx.isComplex||extraTxt.length>5) setTimeout(()=>startAIException('ask'),800)
+    }
+  }catch(e){console.error(e);alert('오류: '+e.message);goStep(3)}
+}
+function setLoad(m,s){document.getElementById('loadMsg').textContent=m;document.getElementById('loadSub').textContent=s}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms))
+
+// ── 법령 매핑 ──
+function getMapped(){
+  if(!S.lawIndex||!S.task)return[]
+  const m=S.lawIndex.article_mapping?.[S.task]
+  if(!m)return[]
+  const res=[]
+  for(const[l,arts]of Object.entries(m.핵심법률||{}))for(const a of arts)res.push({law:l,article:a,type:'핵심'})
+  for(const[l,arts]of Object.entries(m.연관규칙||{}))for(const a of arts)res.push({law:l,article:a,type:'연관'})
+  for(const a of S.arts)if(!res.find(r=>r.law===a.law&&r.article===a.num))res.push({law:a.law,article:a.num,type:'사용자지정'})
+  return res
+}
+
+// ── 유권해석 매칭 ──
+const SUBJ_MAP = {
+  '후보자':'후보자','예비후보자':'예비후보자','선거사무원':'선거사무원',
+  '선거사무장':'선거사무원','회계책임자':'선거사무원',
+  '공무원':'공무원','법인·단체':'법인·단체','정당':'정당',
+  '일반인':'일반인','국민':'일반인',
+}
+
+function searchQA(){
+  if(!S.qaData) return {matches:[], hasConflict:false, total:0, dist:{}}
+
+  const selSubj  = S.vars['행위주체']||S.vars['후원인유형']||S.vars['지출주체']||S.vars['주체']||''
+  const normSubj = SUBJ_MAP[selSubj]||selSubj
+  const scored   = []
+
+  for(const qa of S.qaData){
+    const tags     = qa.tags||{}
+    const taskTags = tags.업무유형||[]
+    const subjs    = tags.주체||[]
+    const text     = (qa.title||'')+(qa.question||'')+(qa.answer||'').slice(0,200)
+    const concl    = qa.conclusion||''
+
+    // ── 1. 업무유형 필터 (태그 기반, 필수) ──
+    let taskScore = 0
+    if(taskTags[0]===S.task)          taskScore = 10
+    else if(taskTags.includes(S.task)) taskScore = 5
+    else if(taskTags.includes('미분류')) taskScore = 1
+    else continue
+
+    let score = taskScore
+
+    // ── 2. 주체 매칭 ──
+    if(normSubj&&normSubj!=='기타'){
+      if(subjs.includes(normSubj))                                    score += 10
+      else if(subjs.some(s=>s.includes(normSubj)||normSubj.includes(s))) score += 5
+    }
+
+    // ── 3. 업무유형 제목 연관성 (핵심 보정) ──
+    const titleKwMap = {
+      '기부행위':['기부','금품','향응','포상','위문','음식물','기념품','축의','부의'],
+      '선거운동_방법수단':['선거운동','현수막','명함','홍보물','어깨띠','연설','집회'],
+      '선거운동_기간':['선거운동기간','사전선거운동','기간위반'],
+      '인터넷SNS':['인터넷','SNS','카카오','문자','유튜브','블로그','이메일'],
+      '후원회후원금':['후원회','후원금','정치자금','후원인'],
+      '선거비용':['선거비용','비용보전'],
+      '회계처리':['회계','영수증'],
+      '후보자_등록자격':['후보자등록','피선거권','기탁금','결격','입후보'],
+      '예비후보자':['예비후보'],
+      '투표개표':['투표','개표'],
+      '당선무효':['당선무효'],
+      '정당_등록활동':['창당','당원','합당','정당'],
+      '당내경선':['경선'],
+      '위탁선거':['조합장','농협','수협'],
+    }
+    const kws = titleKwMap[S.task]||[]
+    const titleHit = kws.some(kw=>(qa.title||'').includes(kw))
+    const qHit     = kws.some(kw=>(qa.question||'').includes(kw))
+    if(titleHit) score += 8    // 제목에 업무유형 키워드 → 높은 가중치
+    else if(qHit) score += 4   // 질의에만 있으면 중간
+    else score -= 3             // 관련 키워드 없으면 하향
+
+    // ── 4. 변수 키워드 매칭 ──
+    for(const[k,v] of Object.entries(S.vars)){
+      if(!v||v==='기타') continue
+      if(['행위주체','후원인유형','지출주체','주체'].includes(k)) continue
+      if((qa.title||'').includes(v))         score += 6
+      else if((qa.question||'').includes(v)) score += 4
+      else if((qa.answer||'').slice(0,300).includes(v)) score += 2
+    }
+
+    // ── 4. 결론 품질 ──
+    if(['가능','불가'].includes(concl))        score += 3
+    else if(concl==='조건부')                 score += 2
+    else if(['소관외','절차'].includes(concl)) score -= 2
+
+    scored.push({qa, score})
+  }
+
+  scored.sort((a,b)=>b.score-a.score)
+
+  // 임계값 없음 - 항상 상위 8건 반환
+  const top = scored.slice(0,8)
+  const topConcl = top.map(x=>x.qa.conclusion).filter(c=>['가능','불가'].includes(c))
+  const hasConflict = new Set(topConcl).size > 1
+
+  // 점수 품질 판정
+  const avgScore = top.length ? top.reduce((s,x)=>s+x.score,0)/top.length : 0
+  const maxScore = top.length ? top[0].score : 0
+  const quality = maxScore >= 25 ? 'high' : maxScore >= 15 ? 'mid' : 'low'
+
+  const dist = {가능:0,불가:0,조건부:0,절차:0,소관외:0}
+  scored.forEach(x=>{ const c=x.qa.conclusion; if(c in dist) dist[c]++ })
+
+  return {matches: top, hasConflict, total: scored.length, dist, quality, avgScore}
+}
+
+// ── 조건 추천 엔진 ──
+function getSuggestions(){
+  if(!S.qaData||!S.task) return []
+  const vars = VARS[S.task]||{}
+  const suggestions = []
+
+  for(const [varKey, options] of Object.entries(vars)){
+    if(S.vars[varKey]) continue  // 이미 선택된 변수 스킵
+    for(const opt of options){
+      if(opt==='기타') continue
+      // 이 옵션 추가 시 몇 건 나오는지 계산
+      const testVars = {...S.vars, [varKey]: opt}
+      let cnt = 0
+      let highCnt = 0
+      for(const qa of S.qaData){
+        const sc = scoreQA(qa, S.task, testVars)
+        if(sc > 0){ cnt++; if(sc>=20) highCnt++ }
+      }
+      if(highCnt >= 3){
+        suggestions.push({varKey, opt, cnt, highCnt})
+      }
+    }
+  }
+
+  // highCnt 기준 정렬, 상위 3개
+  return suggestions.sort((a,b)=>b.highCnt-a.highCnt).slice(0,3)
+}
+
+// ── 실시간 필터 통계 ──
+function getFilteredStats(){
+  if(!S.qaData||!S.task) return null
+
+  const normSubj = SUBJ_MAP[S.vars['행위주체']||S.vars['후원인유형']||S.vars['주체']||'']||''
+
+  let filtered = S.qaData.filter(q=>(q.tags?.업무유형||[]).includes(S.task))
+
+  if(normSubj&&normSubj!=='기타'){
+    const ws = filtered.filter(q=>{
+      const s=q.tags?.주체||[]
+      return s.some(x=>x===normSubj||x.includes(normSubj)||normSubj.includes(x))
+    })
+    if(ws.length>=5) filtered=ws
+  }
+
+  for(const[k,v] of Object.entries(S.vars)){
+    if(!v||v==='기타') continue
+    if(['행위주체','후원인유형','지출주체','주체'].includes(k)) continue
+    const kf=filtered.filter(q=>(q.title||'').includes(v)||(q.question||'').includes(v))
+    if(kf.length>=3) filtered=kf
+  }
+
+  const dist={가능:0,불가:0,조건부:0,절차:0,소관외:0}
+  filtered.forEach(q=>{const c=q.conclusion;if(c in dist)dist[c]++})
+  return {total:filtered.length, dist}
+}
+
+function getTaskHint(taskId){
+  if(!S.qaData||!taskId) return ''
+  const cnt=S.qaData.filter(q=>(q.tags?.업무유형||[]).includes(taskId)).length
+  if(!cnt) return ''
+  return `<div style="font-size:11px;color:var(--mint);font-family:var(--mono);font-weight:600;margin-top:auto;padding-top:4px">${cnt.toLocaleString()}건</div>`
+}
+
+// ── 단순/복합 판별 ──
+function classify(mapped,qa){
+  const checks={
+    hasEtc:     Object.values(S.vars).includes('기타'),
+    userNew:    S.arts.some(a=>!mapped.find(m=>m.law===a.law&&m.article===a.num)),
+    qaConflict: qa.hasConflict||false,
+    noQaMany:   qa.matches.length===0&&mapped.length>=3,
+  }
+  const labels={
+    hasEtc:    '"기타" 판단변수 포함',
+    userNew:   '사용자 지정 조문이 자동매핑 외 조문',
+    qaConflict:'유권해석 결론 충돌',
+    noQaMany:  '유권해석 없음 + 조문 3개 이상',
+  }
+  const isComplex=Object.values(checks).some(v=>v)
+  return{isComplex,reasons:Object.entries(checks).filter(([k,v])=>v).map(([k])=>labels[k])}
+}
+
+// ── Claude API ──
+async function callAI(mapped,qa){
+  if(!CFG.api_key)return null
+  const artTxt=mapped.filter(a=>a.type==='핵심').slice(0,4).map(a=>{
+    const d=S.lawsText?.laws?.[a.law]
+    const art=(d?.articles||[]).find(x=>x.article_num===a.article)
+    return art?`[${a.law} ${a.article}]\n${art.text.slice(0,350)}`:`[${a.law} ${a.article}]`
+  }).join('\n\n---\n\n')
+  const qaTxt=qa.matches.slice(0,3).map(m=>`제목:${m.qa.title}\n결론:${m.qa.conclusion}\n답변:${(m.qa.answer||'').slice(0,200)}`).join('\n\n---\n\n')
+  const sys=`당신은 대한민국 선거법 유권해석 전문 AI입니다. 아래 자료만 참고해 JSON만 응답하세요.\n[법령 조문]\n${artTxt||'없음'}\n[유권해석]\n${qaTxt||'없음'}`
+  const usr=`선거유형:${S.election}\n업무유형:${S.task}\n판단변수:${JSON.stringify(S.vars)}\n추가:${document.getElementById('extraDesc').value||'없음'}\n\n응답형식(JSON만):\n{"판정":"가능|불가|조건부|판단불가","확신도":"높음|보통|낮음","보충의견":"3~5문장","주의사항":"내용 또는 null"}`
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:CFG.model,max_tokens:800,temperature:CFG.temperature,messages:[{role:'user',content:usr}],system:sys})})
+    const d=await r.json()
+    return JSON.parse((d.content?.[0]?.text||'').replace(/```json?|```/g,'').trim())
+  }catch(e){console.warn('AI 오류',e);return null}
+}
+
+// ── 결과 렌더 ──
+const VM={
+  '가능':   {cls:'possible',   label:'✅ 합법',      badge:'합법'},
+  '불가':   {cls:'impossible', label:'❌ 위법',      badge:'위법'},
+  '조건부': {cls:'conditional',label:'⚠️ 조건부',   badge:'조건부'},
+  '절차':   {cls:'procedure',  label:'📋 단순절차',  badge:'단순절차'},
+  '소관외': {cls:'external',   label:'⚫ 소관외',    badge:'소관외'},
+  '판단불가':{cls:'unknown',   label:'⚫ 판단불가',  badge:'판단불가'},
+  '미분류': {cls:'unknown',    label:'⚫ 검토필요',  badge:'검토필요'},
+}
+
+function getVerdict(qa, ai){
+  if(ai?.판정) return {verdict:ai.판정, trust:'🤖 AI 판단', trustCls:'ai'}
+  if(!qa.matches.length) return {verdict:'미분류', trust:'🟠 조문 기반', trustCls:''}
+
+  const conclus=qa.matches.map(x=>x.qa.conclusion).filter(c=>c)
+  if(!conclus.length) return {verdict:'미분류', trust:'🟠 조문 기반', trustCls:''}
+
+  // 빈도 집계
+  const freq={}
+  conclus.forEach(c=>freq[c]=(freq[c]||0)+1)
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1])
+  const top=sorted[0][0]
+
+  // 신뢰도 판단
+  const topScore=qa.matches[0]?.score||0
+  if(qa.hasConflict) return {verdict:'조건부', trust:'🔴 결론 충돌', trustCls:'conflict'}
+  if(topScore>=20&&conclus.length>=2&&sorted[0][1]>=2) return {verdict:top, trust:'🟢 직접일치', trustCls:'high'}
+  if(topScore>=15) return {verdict:top, trust:'🟡 유사일치', trustCls:'mid'}
+  return {verdict:top, trust:'🟠 참고', trustCls:'low'}
+}
+
+function renderQACard(m, idx){
+  const qa=m.qa
+  const vd=VM[qa.conclusion]||VM['미분류']
+  const arts=(qa.tags?.관련조문||[]).slice(0,4)
+  // 사용자 선택 조문과 일치하는 것 강조
+  const userArts = new Set((S.arts||[]).map(a=>a.article))
+  const artHtml=arts.map(a=>{
+    const artNo = a.split(' ').pop()||''
+    const isMatch = userArts.has(artNo) || (S.arts||[]).some(ua=>a.includes(ua.article))
+    const cls = isMatch ? 'art-ref art-match' : 'art-ref'
+    return `<span class="${cls}" onclick="openSbByRef('${a.replace(/'/g,"\'")}'">${a}</span>`
+  }).join(' ')
+  const answerPreview=(qa.answer||'').slice(0,120).replace(/\n/g,' ').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  const scoreBar=Math.min(100,Math.round((m.score/30)*100))
+
+  // 관련도 배지
+  const relBadge = m.score>=25
+    ? '<span style="font-size:10px;background:#E1F5EE;color:var(--mint);padding:1px 6px;border-radius:10px;font-weight:600">관련 사례</span>'
+    : m.score>=15
+    ? '<span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:10px">유사 사례</span>'
+    : '<span style="font-size:10px;background:#F3F4F6;color:#6B7280;padding:1px 6px;border-radius:10px">참고 사례</span>'
+
+  return `<div class="qa-card" onclick="showQADetail(${idx})">
+    <div class="qa-hd">
+      <div class="qa-title">${(qa.title||'제목없음').replace(/</g,'&lt;')}</div>
+      <div class="qa-v ${vd.cls}">${qa.conclusion||'미분류'}</div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin:6px 0 4px;line-height:1.5">${answerPreview}${answerPreview.length>=120?'...':''}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      ${relBadge}
+      <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="width:${scoreBar}%;height:100%;background:var(--mint);border-radius:2px"></div>
+      </div>
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${qa.date||''}</span>
+      ${artHtml}
+    </div>
+  </div>`
+}
+
+function showQADetail(idx){
+  const m=S._lastQA?.matches?.[idx]
+  if(!m) return
+  const qa=m.qa
+  const vd=VM[qa.conclusion]||VM['미분류']
+  document.getElementById('sbLaw').textContent='유권해석'
+  document.getElementById('sbArt').textContent=qa.conclusion||''
+  document.getElementById('sbTit').textContent=qa.date||''
+  const detailText=[
+    qa.title||'',
+    qa.question?'\n[질의]\n'+qa.question:'',
+    qa.answer?'\n[답변]\n'+qa.answer:''
+  ].filter(Boolean).join('\n')
+  document.getElementById('sbBody').textContent=detailText
+  document.getElementById('sidebar').dataset.url=qa.url||''
+  document.getElementById('sidebar').classList.add('open')
+}
+
+function renderResult(mapped,qa,cmplx,ai){
+  S._lastQA=qa
+  const {verdict,trust,trustCls}=getVerdict(qa,ai)
+  const vd=VM[verdict]||VM['미분류']
+  const queryText=[S.election||'',S.task||'',Object.values(S.vars).join(' '),(document.getElementById('extraDesc')?.value||'')].join(' ')
+  let h=`<div class="result-header"><div class="verdict ${vd.cls}">${vd.label}</div><div class="trust">${trust}</div></div>`
+  // 조건 추천
+  if(qa.total===0||qa.quality==='low'||qa.quality==='mid'){
+    const suggs=getSuggestions()
+    if(suggs.length>0){
+      h+=`<div class="res-sec" style="background:var(--bg2);border:1.5px solid var(--border2);padding:12px 16px;margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">💡 ${qa.total===0?'이 조건을 추가하면 유사한 사례가 있어요':'조건 추가 시 더 정확한 사례를 찾을 수 있어요'}</div><div style="display:flex;gap:8px;flex-wrap:wrap">`
+      suggs.forEach(s=>{h+=`<button onclick="applySuggestion('${s.varKey}','${s.opt.replace(/'/g,"\\'")}');return false;" style="background:white;border:1.5px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--text2)" onmouseover="this.style.background='var(--mint-light)'" onmouseout="this.style.background='white'">+ ${s.varKey}: ${s.opt} <span style="color:var(--mint);font-weight:600">${s.highCnt}건</span></button>`})
+      h+=`</div></div>`
+    }
+  }
+  // 유권해석 결과
+  if(qa.total===0){
+    h+=`<div class="res-sec"><div style="text-align:center;padding:24px 0;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">🔍</div><div style="font-weight:600;margin-bottom:4px">정확히 일치하는 사례가 없습니다</div><div style="font-size:12px">조건을 추가하거나 조문을 직접 검색해보세요</div></div></div>`
+  } else {
+    h+=`<div class="res-sec" id="qaCardsWrap"><div class="res-sec-title">📚 유권해석 <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px">${qa.total}건 중 상위 ${qa.matches.length}건</span>${qa.quality==='high'?'<span style="font-size:10px;background:#E1F5EE;color:var(--mint);padding:1px 8px;border-radius:10px;margin-left:6px">높은 관련도</span>':''}</div>`
+    if(qa.matches.length>0){h+=qa.matches.map((m,i)=>renderQACard(m,i)).join('');h+=`<div style="font-size:11px;color:var(--text3);margin-top:8px">카드 클릭 시 전문 확인</div>`}
+    else h+=`<div style="font-size:13px;color:var(--text3);padding:12px 0;text-align:center">이 업무유형의 유권해석 DB를 준비 중입니다.</div>`
+    h+=`</div>`
+  }
+  // 조문 배지
+  const artItems=[]
+  mapped.forEach(a=>artItems.push({text:a.law+' '+a.article,law:a.law,article:a.article,high:a.type==='핵심'}));
+  (S._lastQA?.matches?.[0]?.qa?.tags?.관련조문||[]).slice(0,4).forEach(a=>{if(!artItems.find(x=>x.text===a))artItems.push({text:a,law:a.split(' ')[0],article:a.split(' ').slice(1).join(' '),high:false})})
+  if(artItems.length>0){
+    const getLawCls=law=>law.includes('공직선거')?'공직선거법':law.includes('정치자금')?'정치자금법':law.includes('정당법')?'정당법':'기타'
+    const getLawHref=(law,art)=>`https://www.law.go.kr/법령/${encodeURIComponent(law.replace(/\s/g,''))}/#${encodeURIComponent(art.replace(/\s/g,''))}`
+    h+=`<div class="res-sec"><div class="res-sec-title">📌 관련 조문</div><div class="law-badges-wrap">`
+    artItems.slice(0,8).forEach(a=>{const cls=getLawCls(a.law);const href=getLawHref(a.law,a.article);const star=a.high?'<span class="lbstar">★</span>':'';h+=`<a class="law-badge ${cls}" href="${href}" target="_blank" rel="noopener">${star}${a.text}</a>`})
+    h+=`</div></div>`
+  }
+  // 실무안내서
+  const guides=matchGuideBooks(S.task,queryText)
+  if(guides.length>0){
+    h+=`<div class="res-sec"><div class="res-sec-title">📋 참고 실무안내서</div><div class="guide-cards-wrap">`
+    guides.forEach((sec,idx)=>{
+      const bookName=(sec.id||'').replace(/_\d+$/,'').replace(/_/g,' ')
+      const isHigh=sec.trust==='high'
+      h+=`<div class="guide-card" onclick="toggleGuide(${idx})"><div class="guide-card-hd"><span class="guide-book-tag">${bookName}</span><span class="guide-trust${isHigh?' hi':''}">${isHigh?'★ 높음':'○ 보통'}</span></div><div class="guide-card-title">${sec.title||''}</div><div class="guide-card-summary" id="gc-${idx}">${sec.summary||''}</div><div class="guide-expand-lbl" id="ge-${idx}">펼쳐보기 ▼</div></div>`
+    })
+    h+=`</div></div>`
+  }
+  // AI 진입 - 항상 "원하는 답변 있으신가요?" 먼저
+  const isConflict=trustCls==='conflict'||verdict==='미분류'||(qa.quality==='low'&&qa.total===0)
+  const isProc=verdict==='절차'
+  // 단순절차는 기존대로
+  let procBtn=isProc?`<button class="ai-entry-btn" onclick="startAIException('procedure')" style="margin-top:8px"><div class="ai-avatar">🤖</div>절차 안내를 더 자세히 보시겠습니까?</button>`:''
+  h+=`<div class="answer-check-section" id="answerCheckSection">
+    <div class="answer-check-label">💬 원하는 답변이 있으신가요?</div>
+    <button class="answer-check-yes" onclick="onAnswerYes()">✅ 있어요</button>
+    <button class="answer-check-no" onclick="onAnswerNo()">❌ 없어요</button>
+  </div>`
+  h+=`<div id="suggestSection" style="display:none"></div>`
+  h+=`<div class="ai-entry-section" id="aiEntrySection" style="display:none">${procBtn}</div>`
+  h+=`<div class="chat-area" id="chatArea"></div>`
+  h+=`<div class="res-actions"><button class="btn-act" onclick="window.print()">📄 PDF</button><button class="btn-act" onclick="cpRes()">📋 복사</button><button class="btn-act" onclick="reset()">🔄 새 검색</button></div>`
+  document.getElementById('resultWrap').innerHTML=h
+  // 충돌/미분류는 자동으로 없음 처리
+  if(isConflict&&!isProc) setTimeout(()=>onAnswerNo(),700)
+}
+
+function cpRes(){navigator.clipboard.writeText(document.getElementById('resultWrap').innerText).then(()=>alert('복사됐습니다'))}
+function reset(){S={...S,step:0,main:null,task:null,elecType:'',vars:{},arts:[]};renderMainCats();slide();updateBar();updateBc();closeSb()}
+
+// ── 히스토리 ──
+function saveHist(qa,cmplx,ai){
+  const {verdict}=getVerdict(qa,ai)
+  const item={id:Date.now(),date:new Date().toLocaleString('ko-KR'),election:S.election,task:S.task,verdict:verdict}
+  const h=JSON.parse(localStorage.getItem('elaw_hist')||'[]')
+  h.unshift(item);if(h.length>50)h.pop()
+  localStorage.setItem('elaw_hist',JSON.stringify(h));renderHist()
+}
+function renderHist(){
+  const h=JSON.parse(localStorage.getItem('elaw_hist')||'[]')
+  const vc={가능:'#E1F5EE',불가:'#FEE',조건부:'#FEF3C7',판단불가:'#F3F4F6',미분류:'#F3F4F6'}
+  document.getElementById('histList').innerHTML=h.length?h.map(x=>`
+    <div class="hist-item"><div class="hist-date">${x.date}</div><div class="hist-info">${x.election||''} > ${x.task||''}</div><div class="hist-v" style="background:${vc[x.verdict]||'#F3F4F6'}">${x.verdict}</div></div>`).join('')
+    :'<div style="padding:16px;font-size:12px;color:var(--text3);text-align:center">히스토리 없음</div>'
+}
+function toggleHist(){document.getElementById('histPanel').classList.toggle('open')}
+
+// ── 실시간 미리보기 ──
+
+
+function updatePreview(){
+  if(!S.qaData){
+    document.getElementById('previewCount').textContent = '로딩 중...'
+    setTimeout(updatePreview, 500)
+    return
+  }
+  const bar = document.getElementById('previewBar')
+  const cnt = document.getElementById('previewCount')
+  const distEl = document.getElementById('previewDist')
+  const labelsEl = document.getElementById('previewLabels')
+
+  if(!S.task){
+    if(cnt) cnt.textContent = '—'
+    return
+  }
+
+  // searchQA 기반 실제 매칭 건수 집계
+  const qa = searchQA()
+  const total = qa.total
+  const dist = qa.dist
+
+  cnt.textContent = `${total.toLocaleString()}건`
+  bar.className = 'preview-bar' + (total > 0 ? ' has-data' : '')
+
+  // 단순절차 힌트
+  let hintEl = document.getElementById('previewHint')
+  if(!hintEl){
+    hintEl = document.createElement('div')
+    hintEl.id = 'previewHint'
+    hintEl.style.cssText = 'font-size:11px;color:#3b82f6;font-family:var(--mono);padding:3px 2px 0;display:none'
+    bar.insertAdjacentElement('afterend', hintEl)
+  }
+  const procRatio = total > 0 ? (dist.절차||0) / total : 0
+  if(procRatio >= 0.5){
+    hintEl.style.display = 'block'
+    hintEl.textContent = `📋 단순절차 사례 ${dist.절차}건 포함 — 검색 시 상세 안내 확인 가능`
+  } else {
+    hintEl.style.display = 'none'
+  }
+
+  if(total === 0){
+    distEl.innerHTML = '<div style="width:100%;background:var(--border);height:100%"></div>'
+    labelsEl.innerHTML = '<span style="color:var(--red)">결과 없음</span>'
+    return
+  }
+
+  // 분포 바
+  const COLORS = {가능:'possible',불가:'impossible',조건부:'conditional',절차:'procedure',소관외:'external'}
+  distEl.innerHTML = Object.entries(dist)
+    .filter(([k,v])=>v>0)
+    .map(([k,v])=>`<div class="preview-seg ${COLORS[k]||''}" style="width:${(v/total*100).toFixed(1)}%"></div>`)
+    .join('')
+
+  // 레이블 (상위 3개)
+  const DOT_COLORS = {가능:'#10b981',불가:'#ef4444',조건부:'#f59e0b',절차:'#3b82f6',소관외:'#8b5cf6'}
+  const sorted = Object.entries(dist).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,3)
+  labelsEl.innerHTML = sorted.map(([k,v])=>
+    `<div class="preview-label">
+      <div class="preview-dot" style="background:${DOT_COLORS[k]||'#999'}"></div>
+      ${k} ${v}
+    </div>`
+  ).join('')
+}
+
+// 업무유형 카드에 건수 힌트 추가
+
+
+// 추천 조건 적용
+function applySuggestion(varKey, opt){
+  S.vars[varKey] = opt
+  // 폼 UI 업데이트
+  renderVarForm()
+  updateAcc()
+  updatePreview()
+  // 결과 재실행
+  submitQuery()
+}
+
+// 추천 조건 적용
+
+
+
+// ── 채팅 변수 입력 ──
+let _varKeys=[],_varIdx=0
+
+function countVarOption(varKey,optVal){
+  if(!S.qaData) return -1
+  let pool=S.qaData.filter(qa=>{const tt=qa.tags?.업무유형||[];return tt[0]===S.task||tt.includes(S.task)})
+  for(const[k,v] of Object.entries(S.vars)){
+    if(!v||v==='기타') continue
+    if(['행위주체','후원인유형','지출주체','주체'].includes(k)){
+      const norm=SUBJ_MAP[v]||v
+      const f=pool.filter(qa=>(qa.tags?.주체||[]).some(s=>s.includes(norm)||norm.includes(s)))
+      if(f.length>=3) pool=f
+    } else {
+      const f=pool.filter(qa=>((qa.title||'')+(qa.question||'')).includes(v))
+      if(f.length>=3) pool=f
+    }
+  }
+  if(['행위주체','후원인유형','지출주체','주체'].includes(varKey)){
+    const norm=SUBJ_MAP[optVal]||optVal
+    return pool.filter(qa=>(qa.tags?.주체||[]).some(s=>s.includes(norm)||norm.includes(s))).length
+  }
+  return pool.filter(qa=>((qa.title||'')+(qa.question||'')).includes(optVal)).length
+}
+
+function startVarChat(){
+  const area=document.getElementById('chatVarArea')
+  const sw=document.getElementById('varSubmitWrap')
+  if(!area) return
+  area.innerHTML=''
+  if(sw) sw.style.display='none'
+  _varKeys=Object.keys(VARS[S.task]||{})
+  _varIdx=0
+  updatePreview()
+  if(!_varKeys.length){_showVarSubmit();return}
+  setTimeout(_nextVarQ,150)
+}
+
+function _nextVarQ(){
+  if(_varIdx>=_varKeys.length){_showVarSubmit();return}
+  const area=document.getElementById('chatVarArea')
+  if(!area) return
+  const varKey=_varKeys[_varIdx]
+  const opts=VARS[S.task][varKey]||[]
+  const counted=opts.map(o=>({val:o,cnt:countVarOption(varKey,o)}))
+  const anyPositive=counted.some(x=>x.cnt>0)
+  const d=document.createElement('div')
+  d.className='var-bubble'
+  if(!anyPositive){
+    // 전체 0건 → 직접입력 자동 전환
+    const iid='vfi'+_varIdx
+    d.innerHTML=`<div class="var-av">🤖</div><div class="var-body"><div><b>${varKey}</b>이(가) 무엇인가요? <span style="font-size:10px;color:var(--text3)">(해당 선택지 없음)</span></div><div class="var-free-input-wrap" style="margin-top:8px"><input class="var-free-input" id="${iid}" placeholder="${varKey}을(를) 직접 입력"><button class="var-confirm-btn" data-key="${varKey}" data-iid="${iid}" onclick="_confirmFree(this.dataset.key,this.dataset.iid)">확인</button></div><div style="margin-top:6px"><button class="var-skip-btn" data-key="${varKey}" onclick="_skipVar(this.dataset.key)">건너뛰기</button></div></div>`
+    area.appendChild(d)
+    d.scrollIntoView({behavior:'smooth',block:'end'})
+    const inp=document.getElementById(iid)
+    if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')_confirmFree(varKey,iid)})}
+    return
+  }
+  let pillsHtml=counted.map(x=>{
+    const hide=x.cnt===0?' hidden':''
+    const ct=x.cnt>=0?`<span class="cnt">(${x.cnt})</span>`:''
+    return `<button class="var-pill${hide}" data-key="${varKey}" data-val="${x.val}" onclick="_selectVar(this.dataset.key,this.dataset.val,this)">${x.val}${ct}</button>`
+  }).join('')
+  d.innerHTML=`<div class="var-av">🤖</div><div class="var-body"><div><b>${varKey}</b>이(가) 무엇인가요?</div><div class="var-pills">${pillsHtml}</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="var-free-btn" data-key="${varKey}" onclick="_varFreeMode(this.dataset.key,this)">✏️ 직접 입력</button><button class="var-skip-btn" data-key="${varKey}" onclick="_skipVar(this.dataset.key)">건너뛰기</button></div></div>`
+  area.appendChild(d)
+  d.scrollIntoView({behavior:'smooth',block:'end'})
+}
+
+function _selectVar(varKey,val,btn){
+  S.vars[varKey]=val
+  const body=btn.closest('.var-body')
+  body.querySelectorAll('.var-pill').forEach(b=>{b.disabled=true;if(b===btn)b.classList.add('picked')})
+  body.querySelectorAll('.var-free-btn,.var-skip-btn').forEach(b=>b.style.display='none')
+  _appendUserVarBubble(val)
+  _varIdx++;updatePreview();setTimeout(_nextVarQ,300)
+}
+
+function _skipVar(varKey){
+  const area=document.getElementById('chatVarArea')
+  if(!area) return
+  const bs=area.querySelectorAll('.var-bubble:not(.user)')
+  const last=bs[bs.length-1]
+  if(last){last.querySelectorAll('.var-pill').forEach(b=>b.disabled=true);last.querySelectorAll('.var-free-btn,.var-skip-btn').forEach(b=>b.style.display='none')}
+  _varIdx++;setTimeout(_nextVarQ,200)
+}
+
+function _varFreeMode(varKey,btn){
+  const body=btn.closest('.var-body')
+  body.querySelectorAll('.var-pills,.var-free-btn,.var-skip-btn').forEach(el=>el.style.display='none')
+  const iid='vfi'+_varIdx
+  const wrap=document.createElement('div')
+  wrap.className='var-free-input-wrap'
+  wrap.innerHTML=`<input class="var-free-input" id="${iid}" placeholder="${varKey}을(를) 직접 입력"><button class="var-confirm-btn" data-key="${varKey}" data-iid="${iid}" onclick="_confirmFree(this.dataset.key,this.dataset.iid)">확인</button>`
+  body.appendChild(wrap)
+  const inp=document.getElementById(iid)
+  if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')_confirmFree(varKey,iid)})}
+}
+
+function _confirmFree(varKey,iid){
+  const val=(document.getElementById(iid)?.value||'').trim()
+  if(!val) return
+  S.vars[varKey]=val
+  document.getElementById(iid)?.closest('.var-free-input-wrap')?.querySelectorAll('*').forEach(el=>el.disabled=true)
+  _appendUserVarBubble(val)
+  _varIdx++;updatePreview();setTimeout(_nextVarQ,300)
+}
+
+function _appendUserVarBubble(text){
+  const area=document.getElementById('chatVarArea')
+  if(!area) return
+  const d=document.createElement('div')
+  d.className='var-bubble user'
+  d.innerHTML=`<div class="var-av u">👤</div><div class="var-body">${text}</div>`
+  area.appendChild(d)
+  d.scrollIntoView({behavior:'smooth',block:'end'})
+}
+
+function _showVarSubmit(){
+  const wrap=document.getElementById('varSubmitWrap')
+  const area=document.getElementById('chatVarArea')
+
+  // 단순절차 비율 계산
+  const stats = getFilteredStats()
+  const procRatio = stats && stats.total > 0 ? (stats.dist.절차||0) / stats.total : 0
+
+  // 단순절차 비율 50% 이상 → QA 미리보기 카드 삽입
+  if(area && procRatio >= 0.5 && S.qaData){
+    const procMatches = S.qaData
+      .filter(q=>(q.tags?.업무유형||[]).includes(S.task) && q.conclusion==='절차')
+      .slice(0,2)
+    if(procMatches.length){
+      const d=document.createElement('div')
+      d.className='var-bubble'
+      const cardsHtml=procMatches.map(q=>{
+        const preview=(q.answer||'').slice(0,110).replace(/\n/g,' ')
+        const urlHtml=q.url?`<a href="${q.url}" target="_blank" style="font-size:10px;color:var(--mint);text-decoration:none;font-family:var(--mono);margin-top:4px;display:inline-block">원문보기 →</a>`:''
+        return `<div style="background:var(--surface2);border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:600;color:#1d4ed8;margin-bottom:4px">📋 ${(q.title||'단순절차 안내').replace(/</g,'&lt;')}</div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.55">${preview.replace(/</g,'&lt;')}${preview.length>=110?'...':''}</div>
+          ${urlHtml}
+        </div>`
+      }).join('')
+      d.innerHTML=`<div class="var-av">🤖</div><div class="var-body"><div style="font-size:12px;color:#1d4ed8;font-weight:600;margin-bottom:8px">📋 관련 단순절차 안내 사례</div>${cardsHtml}</div>`
+      area.appendChild(d)
+    }
+  }
+
+  // 버튼 텍스트
+  const btn=document.querySelector('#varSubmitWrap .btn-submit')
+  if(btn) btn.textContent = procRatio >= 0.5 ? '📋 단순절차 상세 확인하기 →' : '유권해석 검색하기 →'
+
+  if(wrap){wrap.style.display='block';setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'end'}),50)}
+  if(area){
+    const cnt=Object.values(S.vars).filter(Boolean).length
+    const d=document.createElement('div')
+    d.className='var-bubble'
+    d.innerHTML=`<div class="var-av">🤖</div><div class="var-body" style="color:var(--mint-dark)">${cnt>0?cnt+'개 조건이 입력됐습니다. ':''}아래 버튼으로 유권해석을 검색하세요.</div>`
+    area.appendChild(d)
+  }
+  updatePreview()
+}
+
+const GUIDE_PRIORITY={
+  '기부행위':['정치관계법사례예시집','정당후보자선거사무안내'],
+  '선거운동_방법수단':['정치관계법사례예시집','정당후보자선거사무안내'],
+  '인터넷SNS':['정치관계법사례예시집'],
+  '선거비용':['선거비용보전안내서','정치자금회계실무'],
+  '회계처리':['정치자금회계실무','선거비용보전안내서'],
+  '후원회후원금':['정치자금회계실무','정당후보자선거사무안내'],
+  '예비후보자':['정당후보자선거사무안내'],
+  '후보자_등록자격':['정당후보자선거사무안내'],
+  '투표개표':['정치관계법사례예시집','정당후보자선거사무안내'],
+  '정당_등록활동':['정치관계법사례예시집'],
+  '당내경선':['정치관계법사례예시집'],
+  '여론조사':['정치관계법사례예시집'],
+  '선거운동_기간':['정치관계법사례예시집'],
+  '위탁선거':[]
+}
+function matchGuideBooks(workType,queryText){
+  const raw=S.lawsText
+  if(!raw) return []
+  const secs=Array.isArray(raw)?raw:Array.isArray(raw.sections)?raw.sections:[]
+  if(!secs.length) return []
+  const prio=GUIDE_PRIORITY[workType]||[]
+  if(!prio.length) return []
+  const qWords=(queryText||'').split(/[\s,]+/).filter(w=>w.length>=2)
+  const pool=secs.filter(s=>prio.some(p=>(s.id||'').includes(p.replace(/\s/g,''))))
+  const scored=(pool.length?pool:secs).map(s=>{
+    const kws=s.keywords||[]
+    const hit=qWords.filter(w=>kws.some(k=>k.includes(w)||w.includes(k))).length
+    return{s,score:hit}
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)
+  return scored.slice(0,3).map(x=>x.s)
+}
+function toggleGuide(idx){
+  const body=document.getElementById('gc-'+idx),lbl=document.getElementById('ge-'+idx)
+  if(!body) return
+  body.classList.toggle('open')
+  lbl.textContent=body.classList.contains('open')?'접기 ▲':'펼쳐보기 ▼'
+}
+
+let _aiQs=[],_aiQIdx=0,_aiAns={}
+function startAIException(mode){
+  _aiQs=[];_aiQIdx=0;_aiAns={}
+  const sec=document.getElementById('aiEntrySection');if(sec)sec.style.display='none'
+  const area=document.getElementById('chatArea');if(!area)return
+  _addAIBubble(area,null);setTimeout(()=>_callExAI(mode),450)
+}
+function _addUserBubble(area,text){
+  const d=document.createElement('div');d.className='chat-bubble user'
+  d.innerHTML=`<div class="bubble-av u">👤</div><div class="bubble-body">${text}</div>`
+  area.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'})
+}
+function _addAIBubble(area,html){
+  const d=document.createElement('div');d.className='chat-bubble'
+  d.innerHTML=html===null?`<div class="bubble-av">🤖</div><div class="bubble-body"><div class="typing-dots"><span></span><span></span><span></span></div></div>`:`<div class="bubble-av">🤖</div><div class="bubble-body">${html}</div>`
+  area.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d
+}
+function _replaceLastAI(html){
+  const area=document.getElementById('chatArea');if(!area)return
+  const bs=area.querySelectorAll('.chat-bubble:not(.user)'),last=bs[bs.length-1]
+  if(last)last.querySelector('.bubble-body').innerHTML=html
+}
+async function _callExAI(mode){
+  if(!CFG.api_key){_replaceLastAI('<span style="font-size:12px;color:var(--text3)">API 키를 입력하면 AI 보조 기능을 사용할 수 있습니다.</span>');return}
+  const qa=S._lastQA,{verdict,trust}=getVerdict(qa,null)
+  const q=document.getElementById('extraDesc')?.value||Object.values(S.vars).join(', ')||S.task||''
+  const ctx={q,el:S.election||'전체',ac:S.vars['행위주체']||S.vars['주체']||'',wt:S.task||'',rs:trust,rc:verdict,art:(qa?.matches?.[0]?.qa?.tags?.관련조문||[]).slice(0,4).join(', ')}
+  const SYS='당신은 선거지원 업무보조 AI이다. 룰베이스 결론을 뒤집지 않는다. 사실을 가정하지 않는다. JSON만 응답한다.'
+  let prompt=''
+  if(mode==='ask')prompt='[작업] 결론 판단에 필요한 추가 질문 최대 3개 생성\n[원질문] '+ctx.q+'\n[입력] 선거:'+ctx.el+' 주체:'+ctx.ac+' 업무:'+ctx.wt+' 상태:'+ctx.rs+'\n[지시] 이미 입력된 내용 제외, 예/아니오 또는 선택형, 합법/위법 단정 금지\n[JSON만] {"추가질문":[{"질문":"","형식":"예/아니오","선택지":[]}]}'
+  else if(mode==='procedure')prompt='[작업] 단순절차 절차안내\n[원질문] '+ctx.q+'\n[입력] 선거:'+ctx.el+' 업무:'+ctx.wt+' 조문:'+ctx.art+'\n[지시] 합법/위법 판단 금지\n[JSON만] {"절차안내":"","확인필요":"","관련근거":""}'
+  else prompt='[작업] 룰베이스 결과 기반 실무형 보조답변\n[원질문] '+ctx.q+'\n[추가] '+JSON.stringify(_aiAns)+'\n[입력] 선거:'+ctx.el+' 주체:'+ctx.ac+' 업무:'+ctx.wt+'\n[룰] 결론:'+ctx.rc+' 조문:'+ctx.art+'\n[지시] 결론변경금지, 사실가정금지, 결론→근거→추가확인\n[JSON만] {"결론":"","근거":"","추가확인":""}'
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:CFG.model,max_tokens:900,system:SYS,messages:[{role:'user',content:prompt}]})})
+    const d=await r.json()
+    const res=JSON.parse((d.content?.[0]?.text||'').replace(/```json?|```/g,'').trim())
+    _renderExAI(mode,res)
+  }catch(e){console.warn(e);_replaceLastAI('<span style="font-size:12px;color:var(--text3)">오류가 발생했습니다.</span>')}
+}
+function _renderExAI(mode,res){
+  const area=document.getElementById('chatArea')
+  if(mode==='ask'){
+    _aiQs=res.추가질문||[]
+    if(!_aiQs.length){_replaceLastAI('추가 확인이 필요한 정보가 없습니다.');if(area){_addAIBubble(area,null);setTimeout(()=>_callExAI('explain'),500)};return}
+    _renderExQ()
+  } else {
+    let html=''
+    const br='<br>'
+    if(mode==='procedure'){
+      if(res.절차안내)html+='<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[절차안내]</b>'+br+res.절차안내.split('\n').join(br)+'</div>'
+      if(res.확인필요)html+='<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[확인 필요]</b>'+br+res.확인필요.split('\n').join(br)+'</div>'
+      if(res.관련근거)html+='<div><b style="font-size:11px;color:var(--mint-dark)">[관련 근거]</b>'+br+res.관련근거+'</div>'
+    } else {
+      if(res.결론)html+='<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[결론]</b>'+br+res.결론.split('\n').join(br)+'</div>'
+      if(res.근거)html+='<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[근거]</b>'+br+res.근거.split('\n').join(br)+'</div>'
+      if(res.추가확인)html+='<div><b style="font-size:11px;color:var(--mint-dark)">[추가 확인]</b>'+br+res.추가확인+'</div>'
+    }
+    _replaceLastAI(html||'답변을 생성하지 못했습니다.')
+  }
+}
+function _renderExQ(){
+  if(_aiQIdx>=_aiQs.length){const area=document.getElementById('chatArea');if(area){_addAIBubble(area,null);setTimeout(()=>_callExAI('explain'),500)};return}
+  const q=_aiQs[_aiQIdx],choices=q.선택지||[],fmt=q.형식||''
+  let ch=''
+  if(fmt==='예/아니오'){ch=['예','아니오'].map(v=>`<button class="choice-pill" onclick="_handleExAns('${v}')">${v}</button>`).join('')}
+  else if(choices.length){ch=choices.map(v=>`<button class="choice-pill" data-v="${v}" onclick="_handleExAns(this.dataset.v)">${v}</button>`).join('')}
+  else{const iid='aiq'+_aiQIdx;ch=`<div style="display:flex;gap:6px;width:100%;margin-top:4px"><input id="${iid}" style="flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;outline:none;background:var(--bg)" placeholder="직접 입력..."><button class="choice-pill" data-iid="${iid}" style="flex-shrink:0" onclick="_handleExAns(document.getElementById(this.dataset.iid).value)">확인</button></div>`}
+  _replaceLastAI(q.질문+'<div class="bubble-choices">'+ch+'</div>')
+}
+function _handleExAns(ans){
+  if(!ans||!ans.trim())return
+  const area=document.getElementById('chatArea');if(!area)return
+  const bs=area.querySelectorAll('.chat-bubble:not(.user)'),last=bs[bs.length-1]
+  if(last)last.querySelectorAll('.choice-pill').forEach(b=>{b.disabled=true;if(b.textContent.trim()===ans.trim())b.classList.add('picked')})
+  _aiAns[_aiQs[_aiQIdx]?.질문||_aiQIdx]=ans
+  _addUserBubble(area,ans)
+  _aiQIdx++
+  if(_aiQIdx<_aiQs.length){_addAIBubble(area,null);setTimeout(_renderExQ,300)}
+  else{_addAIBubble(area,null);setTimeout(()=>_callExAI('explain'),500)}
+}
+
+// ── 답변확인 버튼 핸들러 ──
+function onAnswerYes(){
+  const sec=document.getElementById('answerCheckSection')
+  if(sec) sec.innerHTML='<div style="font-size:13px;color:var(--mint);font-weight:600">✅ 검색을 완료했습니다.</div>'
+}
+
+function onAnswerNo(){
+  const sec=document.getElementById('answerCheckSection')
+  if(sec) sec.innerHTML='<div style="font-size:13px;color:var(--text3)">더 정확한 결과를 위해 추가 정보를 입력해주세요.</div>'
+  _showSuggestSection()
+}
+
+// DB에서 해당 varKey+opt 조건 사례 제목 예시 추출
+function _getDbExamples(varKey, opt){
+  if(!S.qaData||!S.task) return []
+  const isSubjKey=['행위주체','후원인유형','지출주체','주체'].includes(varKey)
+  const norm=SUBJ_MAP[opt]||opt
+  return S.qaData
+    .filter(qa=>{
+      const tt=qa.tags?.업무유형||[]
+      if(!tt.includes(S.task)&&tt[0]!==S.task) return false
+      if(isSubjKey) return (qa.tags?.주체||[]).some(s=>s.includes(norm)||norm.includes(s))
+      return ((qa.title||'')+(qa.question||'')).includes(opt)
+    })
+    .sort((a,b)=>{
+      const score=qa=>['합법','위법','조건부'].includes(qa.conclusion)?1:0
+      return score(b)-score(a)
+    })
+    .slice(0,3)
+    .map(qa=>qa.title||'')
+    .filter(Boolean)
+}
+
+function _showSuggestSection(){
+  const suggs=getSuggestions()
+  const sec=document.getElementById('suggestSection')
+  if(!sec) return
+
+  if(!suggs.length){
+    // 추천 없으면 바로 자유입력+AI
+    sec.style.display='block'
+    sec.innerHTML=`<div class="suggest-section">
+      <div class="suggest-title">📝 추가 설명을 입력해주세요</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">구체적인 상황을 입력하면 AI가 도움을 드립니다</div>
+      <div class="suggest-free-row">
+        <input class="suggest-free-input" id="suggestFreeInput" placeholder="예) 선거일 90일 전 지역 체육행사에서 기념품 제공">
+        <button class="suggest-confirm-btn" onclick="_onSuggestFreeSubmit()">AI 질문하기</button>
+      </div>
+    </div>`
+    return
+  }
+
+  let html=`<div class="suggest-section"><div class="suggest-title">🔍 이 정보를 추가하면 더 정확한 결과를 찾을 수 있어요</div>`
+
+  suggs.forEach((sg,idx)=>{
+    const examples=_getDbExamples(sg.varKey, sg.opt)
+    const exHtml=examples.length
+      ? `<div class="suggest-examples">관련 사례: ${examples.map(e=>`"${e.slice(0,30)}..."`).join(' / ')}</div>`
+      : ''
+    html+=`<div class="suggest-item">
+      <div class="suggest-item-label">${sg.varKey}: <b>${sg.opt}</b> <span style="font-size:10px;color:var(--mint);font-family:var(--mono)">(${sg.highCnt}건)</span></div>
+      ${exHtml}
+      <div class="suggest-pills">
+        <button class="suggest-pill" data-key="${sg.varKey}" data-val="${sg.opt}" onclick="_onSuggestPick(this)">${sg.opt} 추가하기</button>
+      </div>
+    </div>`
+  })
+
+  // 자유입력
+  html+=`<div class="suggest-item">
+    <div class="suggest-item-label">직접 입력</div>
+    <div class="suggest-examples">위 항목 외에 추가로 설명할 내용이 있으면 입력하세요</div>
+    <div class="suggest-free-row">
+      <input class="suggest-free-input" id="suggestFreeInput" placeholder="구체적인 상황 입력...">
+      <button class="suggest-confirm-btn" onclick="_onSuggestFreeSubmit()">입력</button>
+    </div>
+  </div>`
+  html+=`</div>`
+
+  sec.style.display='block'
+  sec.innerHTML=html
+  sec.scrollIntoView({behavior:'smooth',block:'start'})
+}
+
+function _onSuggestPick(btn){
+  const varKey=btn.dataset.key, val=btn.dataset.val
+  btn.classList.add('picked')
+  btn.disabled=true
+  // vars에 추가
+  S.vars[varKey]=val
+  // 재검색 실행
+  const mapped=getMapped()
+  const qa=searchQA()
+  const cmplx=classify(mapped,qa)
+  S._lastQA=qa
+  // 결과 섹션 업데이트 (QA카드만)
+  _updateQACards(qa)
+  // 재검색 후도 없으면 AI 유도
+  if(qa.quality==='low'||qa.total<3){
+    _showAIPrompt()
+  }
+}
+
+function _onSuggestFreeSubmit(){
+  const inp=document.getElementById('suggestFreeInput')
+  const val=inp?inp.value.trim():''
+  if(!val) return
+  // extraDesc에 반영
+  const ed=document.getElementById('extraDesc')
+  if(ed) ed.value=val
+  _showAIPrompt()
+}
+
+function _updateQACards(qa){
+  const wrap=document.getElementById('qaCardsWrap')
+  if(!wrap) return
+  if(!qa.matches.length){
+    wrap.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center">조건에 맞는 유권해석을 찾지 못했습니다</div>'
+    return
+  }
+  wrap.innerHTML=qa.matches.map((m,i)=>renderQACard(m,i)).join('')
+}
+
+function _showAIPrompt(){
+  const sugSec=document.getElementById('suggestSection')
+  if(sugSec){
+    sugSec.innerHTML+=`<div style="margin-top:12px;padding:12px;background:var(--mint-light);border-radius:var(--radius);font-size:13px;color:var(--mint-dark)">
+      💡 룰베이스에서 정확한 사례를 찾지 못했습니다. AI에게 질문하시겠습니까?
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="suggest-pill" onclick="_triggerAI()" style="background:var(--mint);color:#fff;border-color:var(--mint)">🤖 AI에게 질문하기</button>
+      </div>
+    </div>`
+  }
+}
+
+function _triggerAI(){
+  const aiSec=document.getElementById('aiEntrySection')
+  if(aiSec) aiSec.style.display='block'
+  const area=document.getElementById('chatArea')
+  if(!area) return
+  _addAIBubble(area,null)
+  setTimeout(()=>_callExAINew(),450)
+}
+
+async function _callExAINew(){
+  if(!CFG.api_key){
+    _replaceLastAI('<span style="font-size:12px;color:var(--text3)">API 키를 입력하면 AI 보조 기능을 사용할 수 있습니다.</span>')
+    return
+  }
+  const qa=S._lastQA||{matches:[],total:0,quality:'low'}
+  const mapped=getMapped()
+  const artList=mapped.filter(a=>a.type==='핵심').map(a=>a.law+' '+a.article).join(', ')
+  const topTitles=qa.matches.slice(0,3).map(m=>m.qa.title||'').filter(Boolean)
+  const extraVal=document.getElementById('extraDesc')?.value||document.getElementById('suggestFreeInput')?.value||''
+  const varsJson=JSON.stringify(S.vars)
+
+  const SYS=`당신은 대한민국 선거법 유권해석 보조 AI입니다.
+룰베이스가 우선이며 당신은 보조입니다. 아래 규칙을 반드시 따르십시오.
+- 룰베이스 결론이 있으면 뒤집지 않는다
+- 입력되지 않은 사실관계를 가정하지 않는다
+- 근거 없는 조문이나 해석을 생성하지 않는다
+- JSON만 응답한다 (마크다운 금지)`
+
+  const prompt=`[업무유형] ${S.task||''}
+[선거유형] ${S.election||'전체'}
+[판단변수] ${varsJson}
+[추가설명] ${extraVal||'없음'}
+[룰베이스 재검색 결과] 건수:${qa.total}, quality:${qa.quality||'low'}, 상위사례:${JSON.stringify(topTitles)}
+[현재 매핑된 조문] ${artList||'없음'}
+
+아래 JSON 형식으로만 응답하라:
+{
+  "결론": "가능|불가|조건부|판단불가",
+  "핵심조문": ["법령명 제XX조"],
+  "실무책자": {"책자명": "없으면 null", "키워드": []},
+  "해석요약": "3문장 이내 실무형 요약",
+  "재랭킹힌트": ["DB 재검색 핵심 키워드"],
+  "추가확인": "더 필요한 정보 또는 null"
+}`
+
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:CFG.model,max_tokens:900,system:SYS,messages:[{role:'user',content:prompt}]})})
+    const d=await r.json()
+    const res=JSON.parse((d.content?.[0]?.text||'').replace(/```json?|```/g,'').trim())
+    _renderAINew(res)
+  }catch(e){
+    console.warn(e)
+    _replaceLastAI('<span style="font-size:12px;color:var(--text3)">오류가 발생했습니다.</span>')
+  }
+}
+
+function _renderAINew(res){
+  // 재랭킹힌트로 DB 재검색
+  if(res.재랭킹힌트&&res.재랭킹힌트.length&&S.qaData){
+    const hints=res.재랭킹힌트
+    const reranked=S._lastQA?.matches?.slice()||[]
+    reranked.sort((a,b)=>{
+      const scoreA=hints.filter(h=>(a.qa.title||'').includes(h)||(a.qa.question||'').includes(h)).length
+      const scoreB=hints.filter(h=>(b.qa.title||'').includes(h)||(b.qa.question||'').includes(h)).length
+      return scoreB-scoreA
+    })
+    _updateQACards({matches:reranked})
+  }
+
+  // 핵심조문 보강
+  if(res.핵심조문&&res.핵심조문.length){
+    const lawWrap=document.querySelector('.law-badges-wrap')
+    if(lawWrap){
+      res.핵심조문.forEach(art=>{
+        const parts=art.split(' ')
+        const law=parts.slice(0,-1).join(' ')
+        const article=parts[parts.length-1]
+        const href=`https://www.law.go.kr/법령/${encodeURIComponent(law.replace(/\s/g,''))}`
+        const existing=lawWrap.querySelector(`[href*="${encodeURIComponent(law)}"]`)
+        if(!existing) lawWrap.insertAdjacentHTML('beforeend',`<a class="law-badge 기타" href="${href}" target="_blank" style="border:2px solid var(--mint)">🤖 ${art}</a>`)
+      })
+    }
+  }
+
+  // 실무책자 재검색
+  if(res.실무책자?.키워드?.length){
+    const guides=matchGuideBooks(S.task, res.실무책자.키워드.join(' '))
+    if(guides.length){
+      let gWrap=document.querySelector('.guide-cards-wrap')
+      if(!gWrap){
+        const resSec=document.getElementById('resultWrap')
+        const newSec=document.createElement('div')
+        newSec.className='res-sec'
+        newSec.innerHTML=`<div class="res-sec-title">📋 AI 추천 실무안내서</div><div class="guide-cards-wrap" id="aiGuideWrap"></div>`
+        resSec.insertBefore(newSec, document.getElementById('suggestSection'))
+        gWrap=document.getElementById('aiGuideWrap')
+      }
+      guides.forEach((sec,idx)=>{
+        const bookName=(sec.id||'').replace(/_\d+$/,'').replace(/_/g,' ')
+        gWrap.insertAdjacentHTML('beforeend',`<div class="guide-card" onclick="toggleGuide('ai${idx}')"><div class="guide-card-hd"><span class="guide-book-tag">${bookName}</span><span class="guide-trust hi">★ AI추천</span></div><div class="guide-card-title">${sec.title||''}</div><div class="guide-card-summary" id="gc-ai${idx}">${sec.summary||''}</div><div class="guide-expand-lbl" id="ge-ai${idx}">펼쳐보기 ▼</div></div>`)
+      })
+    }
+  }
+
+  // AI 버블 표시
+  const br='<br>'
+  let html=''
+  if(res.해석요약) html+=`<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[AI 해석요약]</b>${br}${res.해석요약.split('\n').join(br)}</div>`
+  if(res.결론&&res.결론!=='판단불가'){
+    const vm=VM[res.결론==='가능'?'가능':res.결론==='불가'?'불가':res.결론==='조건부'?'조건부':'미분류']
+    html+=`<div style="margin-bottom:8px"><b style="font-size:11px;color:var(--mint-dark)">[AI 판단]</b>${br}<span class="verdict-badge ${vm?.cls||''}">${vm?.label||res.결론}</span> <span style="font-size:10px;color:var(--text3)">(룰베이스 결론 없을 때 참고)</span></div>`
+  }
+  if(res.추가확인&&res.추가확인!=='null') html+=`<div><b style="font-size:11px;color:var(--mint-dark)">[추가 확인 필요]</b>${br}${res.추가확인}</div>`
+  _replaceLastAI(html||'분석을 완료했습니다.')
+}
+
+init()
+</script>
+</body>
+</html>
