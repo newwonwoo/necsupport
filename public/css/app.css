@@ -14,7 +14,20 @@
   --shadow-lg:0 8px 32px rgba(13,158,117,.12);
   --t:.2s cubic-bezier(.4,0,.2,1);
 }
-body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;-webkit-text-size-adjust:100%}
+
+/* ── iOS 터치 최적화 ── */
+button,[role="button"],.main-card,.choice-card,.var-pill,.choice-pill,
+.var-free-btn,.var-skip-btn,.var-confirm-btn,.var-show-others,
+.btn-submit,.btn-act,.res-tab,.qa-card,.guide-card,.law-card,
+.proc-section-card,.proc-quick-yes,.proc-quick-no,
+.answer-yes,.answer-no,.hist-btn,.hist-item,.step-dot,
+.back-btn,.btn-sb-act,.btn-sb-close,.too-many-btn,
+.free-submit-btn,.free-skip-btn,.breadcrumb span{
+  cursor:pointer;
+  -webkit-tap-highlight-color:rgba(13,158,117,.15);
+  touch-action:manipulation;
+}
 
 /* ── 헤더 ── */
 .app-header{background:var(--surface);border-bottom:1.5px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
