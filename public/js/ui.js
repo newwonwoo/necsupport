@@ -422,16 +422,13 @@ export function renderResult(state, results, ai) {
   const verdict = computeVerdict(results.qa, ai);
   const vd = VERDICT_META[verdict.label] || VERDICT_META['미분류'];
 
-  // ── 단순절차 강조 카드 (결론='단순절차'인 사례가 있으면 별도 표시) ──
-  const procMatches = results.qa.matches.filter(m => {
-    const c = m.qa.conclusion || '';
-    return c === '단순절차' || c === '절차';
-  }).slice(0, 3);
+  // ── 단순절차 강조 카드 (procSamples 별도 추출, 상위 8건과 독립) ──
+  const procMatches = (results.qa.procSamples || []).slice(0, 3);
   const procHtml = procMatches.length ? `
     <div class="proc-section">
       <div class="proc-section-hd">📋 단순절차로 처리되는 유사사례 ${procMatches.length}건</div>
       ${procMatches.map((m, i) => `
-        <div class="proc-section-card" data-proc-idx="${results.qa.matches.indexOf(m)}">
+        <div class="proc-section-card" data-proc-idx="${i}">
           <div class="proc-section-title">${escapeHtml(m.qa.title || '')}</div>
           <div class="proc-section-body">${escapeHtml((m.qa.answer || '').slice(0, 200))}${(m.qa.answer || '').length > 200 ? '...' : ''}</div>
         </div>

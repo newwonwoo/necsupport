@@ -65,6 +65,7 @@ export function searchQA(state) {
     const concl = qa.conclusion || '';
     if (['합법', '가능', '위법', '불가'].includes(concl)) score += 3;
     else if (concl === '조건부')                          score += 2;
+    else if (concl === '단순절차' || concl === '절차')    score += 2;
     else if (['소관외'].includes(concl))                   score -= 2;
 
     scored.push({ qa, score });
@@ -111,7 +112,12 @@ export function searchQA(state) {
   const maxScore = top.length ? top[0].score : 0;
   const quality = maxScore >= 25 ? 'high' : maxScore >= 15 ? 'mid' : 'low';
 
-  return { matches: top, total: filtered.length, strongCount, dist, hasConflict, quality, maxScore };
+  // 단순절차 사례를 별도 추출 (상위 8건에 안 올라와도 화면에 표시할 수 있도록)
+  const procSamples = filtered
+    .filter(x => normalizeConclusion(x.qa.conclusion) === '단순절차')
+    .slice(0, 3);
+
+  return { matches: top, total: filtered.length, strongCount, dist, hasConflict, quality, maxScore, procSamples };
 }
 
 // ── 조문 검색 (자동 매핑 + 키워드 검색) ──
@@ -296,21 +302,20 @@ export function generateLocalQuestions(state) {
 }
 
 // ── 단순절차 빠른 답변 추출 ──
-// 임계값을 낮춰서 (25% 이상) 사용자가 빨리 발견할 수 있도록
+// 별도 procSamples 에서 추출 (상위 8건에 안 올라와도 찾을 수 있도록)
 export function getQuickProcedure(state) {
   const r = searchQA(state);
-  if (!r.matches.length) return null;
   const procCount = r.dist['단순절차'] || 0;
+  // 1건이라도 있고, 비율 10% 이상이거나 절대 3건 이상이면 트리거
+  if (procCount < 1) return null;
   const procRatio = r.total > 0 ? procCount / r.total : 0;
-  // 25% 이상이거나, 절대 건수 5건 이상이면 트리거
-  if (procRatio < 0.25 && procCount < 5) return null;
+  if (procRatio < 0.1 && procCount < 3) return null;
 
-  const procMatch = r.matches.find(m => {
-    const c = normalizeConclusion(m.qa.conclusion);
-    return c === '단순절차';
-  });
-  if (!procMatch) return null;
-  return procMatch.qa;
+  // procSamples 에서 가져오기 (상위 8건과 독립적)
+  if (r.procSamples && r.procSamples.length > 0) {
+    return r.procSamples[0].qa;
+  }
+  return null;
 }
 
 // 정규화 export
