@@ -53,10 +53,29 @@ export function renderCountBar(containerId, state, hint = '') {
     return;
   }
   const r = searchAll(state);
+
+  // 실시간 결론 예측 (상위 매칭 기반)
+  let predHtml = '';
+  if (r.qa.matches.length >= 2) {
+    const concs = r.qa.matches.map(m => m.qa.conclusion).filter(Boolean);
+    const freq = {};
+    concs.forEach(c => freq[c] = (freq[c] || 0) + 1);
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    if (sorted.length && concs.length >= 2) {
+      const topC = sorted[0][0];
+      const pct = Math.round(sorted[0][1] / concs.length * 100);
+      if (pct >= 50) {
+        const vm = VERDICT_META[topC] || VERDICT_META['미분류'];
+        predHtml = `<span class="count-pred ${vm.cls}">예상: ${vm.short} ${pct}%</span>`;
+      }
+    }
+  }
+
   el.innerHTML = `
     <span class="count-chip qa"><span class="dot"></span>유권해석 <strong>${r.counts.qa}</strong>건</span>
     <span class="count-chip guide"><span class="dot"></span>실무안내 <strong>${r.counts.guides}</strong>건</span>
     <span class="count-chip law"><span class="dot"></span>관련 조문 <strong>${r.counts.laws}</strong>건</span>
+    ${predHtml}
     <span class="count-divider"></span>
     <span class="count-hint">${hint}</span>
   `;
@@ -423,6 +442,7 @@ export function renderResult(state, results, ai) {
 
   const verdict = computeVerdict(results.qa, ai);
   const vd = VERDICT_META[verdict.label] || VERDICT_META['미분류'];
+  results._vars = state.vars; // 결론 문장에서 활용
 
   // ── 단순절차 강조 카드 (procSamples 별도 추출, 상위 8건과 독립) ──
   const procMatches = (results.qa.procSamples || []).slice(0, 3);
@@ -449,9 +469,13 @@ export function renderResult(state, results, ai) {
   ` : '';
 
   let html = `
-    <div class="result-header">
-      <div class="verdict ${vd.cls}">${vd.label}</div>
-      <div class="trust">${verdict.trust}</div>
+    <div class="conclusion-card ${vd.cls}">
+      <div class="conclusion-sentence">${getConclusionSentence(verdict, results)}</div>
+      <div class="conclusion-evidence">
+        <div class="evidence-stats">📊 ${getCaseStats(results.qa)}</div>
+        ${getKeyArticlesHtml(results.laws)}
+      </div>
+      ${getWarningHtml(results.qa, verdict)}
     </div>
 
     ${procHtml}
@@ -565,6 +589,59 @@ function renderLawTab(laws) {
     return items;
   }).join('');
   return `<div class="res-sec"><div class="res-sec-title">⚖️ 관련 조문 ${laws.length}건</div>${html}</div>`;
+}
+
+// ── 결론 문장 생성 (검색 결과 나열이 아닌 "답변") ──
+function getConclusionSentence(verdict, results) {
+  const vars = Object.entries(results._vars || {}).filter(([k, v]) => v && v !== '기타');
+  const varDesc = vars.map(([k, v]) => v).join(', ');
+  const total = results.qa.total;
+  const dist = results.qa.dist;
+  const topCount = dist[verdict.label] || dist['합법'] || dist['위법'] || 0;
+
+  switch (verdict.label) {
+    case '합법': case '가능':
+      return `이 경우 <b>합법</b>으로 판단됩니다.${total > 0 ? ` 유사 사례 ${total}건 중 ${dist['합법'] || 0}건이 합법입니다.` : ''}`;
+    case '위법': case '불가':
+      return `이 경우 <b>위법</b>에 해당할 가능성이 높습니다.${total > 0 ? ` 유사 사례 ${total}건 중 ${dist['위법'] || 0}건이 위법으로 판단되었습니다.` : ''}`;
+    case '조건부':
+      return `<b>조건에 따라</b> 합법 또는 위법이 달라질 수 있습니다. 구체적인 사실관계를 확인해주세요.`;
+    case '단순절차': case '절차':
+      return `이것은 <b>절차적 사항</b>입니다. 아래 안내를 참고하세요.`;
+    case '소관외':
+      return `선거관리위원회 <b>소관 외</b> 사항입니다. 관할 기관에 문의하세요.`;
+    default:
+      return `명확한 결론을 도출하기 어렵습니다. 아래 유사 사례와 조문을 참고하세요.`;
+  }
+}
+
+function getCaseStats(qa) {
+  const total = qa.total;
+  if (total === 0) return '매칭되는 유사 사례가 없습니다';
+  const items = [];
+  const d = qa.dist;
+  if (d['합법']) items.push(`합법 ${d['합법']}건`);
+  if (d['위법']) items.push(`위법 ${d['위법']}건`);
+  if (d['조건부']) items.push(`조건부 ${d['조건부']}건`);
+  if (d['단순절차']) items.push(`절차 ${d['단순절차']}건`);
+  if (d['소관외']) items.push(`소관외 ${d['소관외']}건`);
+  return `유사 사례 <b>${total}건</b> 분석: ${items.join(' · ')}`;
+}
+
+function getKeyArticlesHtml(laws) {
+  const core = laws.filter(l => l.type === '핵심').slice(0, 4);
+  if (!core.length) return '';
+  return `<div class="evidence-articles">📌 핵심 근거: ${core.map(a => `<span class="evidence-art">${escapeHtml(a.law)} ${escapeHtml(a.article)}</span>`).join(' ')}</div>`;
+}
+
+function getWarningHtml(qa, verdict) {
+  if (qa.hasConflict) {
+    return `<div class="conclusion-warning">⚠️ 유사 사례 간 결론이 갈리고 있어, 구체적인 사실관계에 따라 결론이 달라질 수 있습니다.</div>`;
+  }
+  if (verdict.label === '조건부') {
+    return `<div class="conclusion-warning">⚠️ 금액, 시기, 대상 등 세부 조건에 따라 합법/위법이 달라집니다. 유사 사례를 꼭 확인하세요.</div>`;
+  }
+  return '';
 }
 
 // ── 결론 판정 ──

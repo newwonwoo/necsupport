@@ -211,7 +211,33 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 /* ── 결과 패널 ── */
 .result-wrap{padding:24px 28px}
-.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+
+/* ── 결론 카드 (검색 결과가 아닌 "답변") ── */
+.conclusion-card{
+  border-radius:16px;padding:24px 28px;margin-bottom:20px;
+  border:2px solid var(--border);background:var(--surface);
+}
+.conclusion-card.possible{border-color:var(--mint);background:linear-gradient(135deg,#f0fdf4 0%,#E1F5EE 100%)}
+.conclusion-card.impossible{border-color:var(--red);background:linear-gradient(135deg,#fef2f2 0%,#FEE 100%)}
+.conclusion-card.conditional{border-color:var(--amber);background:linear-gradient(135deg,#fffbeb 0%,#FEF3C7 100%)}
+.conclusion-card.procedure{border-color:#93C5FD;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)}
+.conclusion-card.external{border-color:#C4B5FD;background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%)}
+.conclusion-card.unknown{border-color:#9CA3AF;background:linear-gradient(135deg,#f9fafb 0%,#F3F4F6 100%)}
+.conclusion-sentence{font-size:18px;font-weight:700;line-height:1.6;color:var(--text);margin-bottom:14px}
+.conclusion-evidence{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text2)}
+.evidence-stats{font-family:var(--mono);line-height:1.5}
+.evidence-articles{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.evidence-art{
+  display:inline-block;background:#fff;padding:3px 10px;border-radius:10px;
+  font-family:var(--mono);font-size:11px;border:1px solid var(--border);color:var(--text2);
+}
+.conclusion-warning{
+  margin-top:12px;padding:10px 14px;background:rgba(255,255,255,.6);
+  border-radius:var(--radius-sm);font-size:12px;color:#92400E;line-height:1.5;
+}
+
+/* 이전 verdict/trust (결론 카드로 대체됨) */
+.result-header{display:none}
 .verdict{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:30px;font-size:16px;font-weight:700}
 .verdict.possible{background:#E1F5EE;color:#0a3d32;border:2px solid var(--mint)}
 .verdict.impossible{background:#FEE;color:#991B1B;border:2px solid var(--red)}
@@ -220,6 +246,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .verdict.procedure{background:#EFF6FF;color:#1E40AF;border:2px solid #93C5FD}
 .verdict.external{background:#F5F3FF;color:#5B21B6;border:2px solid #C4B5FD}
 .trust{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--bg2);border:1px solid var(--border);color:var(--text3)}
+
+/* ── 실시간 결론 예측 (변수 입력 카운트바) ── */
+.count-pred{
+  padding:4px 12px;border-radius:16px;font-size:11px;font-weight:700;
+  font-family:var(--mono);margin-left:4px;
+}
+.count-pred.possible{background:#E1F5EE;color:var(--mint)}
+.count-pred.impossible{background:#FEE;color:var(--red)}
+.count-pred.conditional{background:#FEF3C7;color:#92400E}
+.count-pred.procedure{background:#EFF6FF;color:#1E40AF}
+.count-pred.external{background:#F5F3FF;color:#5B21B6}
+.count-pred.unknown{background:#F3F4F6;color:#6B7280}
 
 /* ── 결과 탭 (3가지 자원) ── */
 .res-tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:18px}
