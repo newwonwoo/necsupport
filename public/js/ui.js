@@ -114,7 +114,8 @@ export function renderTasks(state, onSelect) {
   }).join('');
 
   const g = document.getElementById('taskGrid');
-  if (g) g.innerHTML = html;
+  if (!g) return;
+  g.innerHTML = html;
   g.querySelectorAll('.choice-card').forEach(card => {
     card.addEventListener('click', () => onSelect(card.dataset.id));
   });

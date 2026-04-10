@@ -287,6 +287,7 @@ async function onAnswerNo() {
   const sec = document.getElementById('answerCheck');
   if (sec) sec.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:6px 0">🔍 추가 정보를 분석합니다...</div>';
 
+  _freeFormShown = false;
   _localQs = generateLocalQuestions(S);
   _localQIdx = 0;
   _localAns = {};
@@ -301,6 +302,9 @@ async function onAnswerNo() {
 
 // 자유 입력 폼 (질문 다 끝났거나 처음부터 좁힐 게 없을 때)
 function showFreeInputForm(headerText) {
+  if (_freeFormShown) return;
+  _freeFormShown = true;
+
   const area = document.getElementById('aiChatArea');
   if (!area) return;
 
@@ -310,14 +314,14 @@ function showFreeInputForm(headerText) {
     <div class="bubble-av">🤖</div>
     <div class="bubble-body">
       <div style="font-size:13px;margin-bottom:8px">${ui.escapeHtml(headerText)}</div>
-      <textarea id="freeDescInput" rows="3"
+      <textarea class="free-desc-input" rows="3"
         style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;font-family:var(--sans);outline:none;resize:vertical;background:var(--bg)"
         placeholder="예) 선거일 90일 전 지역 체육행사에서 후보자 명함을 배부..."></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="choice-pill" id="freeSubmitBtn" style="background:var(--mint);color:#fff;border-color:var(--mint);font-weight:600">
+        <button class="choice-pill free-submit-btn" style="background:var(--mint);color:#fff;border-color:var(--mint);font-weight:600">
           ${CFG.api_key ? '🤖 AI에게 분석 요청' : '🔁 키워드로 재정렬'}
         </button>
-        <button class="choice-pill" id="freeSkipBtn">건너뛰기</button>
+        <button class="choice-pill free-skip-btn">건너뛰기</button>
       </div>
       ${!CFG.api_key
         ? '<div style="font-size:10px;color:var(--text3);margin-top:8px">💡 API 키가 없어도 입력 내용으로 결과를 다시 정렬할 수 있습니다.</div>'
@@ -326,17 +330,19 @@ function showFreeInputForm(headerText) {
   area.appendChild(d);
   scrollChatToEnd();
 
-  const inp = document.getElementById('freeDescInput');
+  const inp = d.querySelector('.free-desc-input');
+  const submitBtn = d.querySelector('.free-submit-btn');
+  const skipBtn = d.querySelector('.free-skip-btn');
   inp?.focus();
 
-  document.getElementById('freeSubmitBtn').addEventListener('click', () => {
+  submitBtn.addEventListener('click', () => {
     const val = (inp?.value || '').trim();
     if (!val) { inp?.focus(); return; }
     addUserBubble(area, val);
     _localAns['추가설명'] = val;
     inp.disabled = true;
-    document.getElementById('freeSubmitBtn').disabled = true;
-    document.getElementById('freeSkipBtn').disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
 
     if (CFG.api_key) {
       addAIBubble(area, null);
@@ -347,10 +353,10 @@ function showFreeInputForm(headerText) {
     }
   });
 
-  document.getElementById('freeSkipBtn').addEventListener('click', () => {
+  skipBtn.addEventListener('click', () => {
     inp.disabled = true;
-    document.getElementById('freeSubmitBtn').disabled = true;
-    document.getElementById('freeSkipBtn').disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
     addLocalSystemMsg('검색을 종료합니다.');
   });
 }
@@ -385,6 +391,7 @@ function scrollChatToEnd() {
 
 let _localQs = [], _localQIdx = 0;
 let _localAns = {};
+let _freeFormShown = false;
 
 function askNextLocalQuestion() {
   const area = document.getElementById('aiChatArea');
@@ -571,6 +578,7 @@ function resetSearch() {
   S.extraDesc = '';
   S.userArts = [];
   S._lastResults = null;
+  _freeFormShown = false;
   ui.renderMainCats(S, selMain);
   ui.slide(0);
   ui.updateStepBar(0);
