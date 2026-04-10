@@ -122,11 +122,9 @@ function enableUploadMode() {
 }
 
 function bootApp() {
-  ui.slide(S.step); // 패널 width 초기 세팅
+  ui.slide(S.step);
   ui.renderMainCats(S, selMain);
   ui.updateStepBar(S.step);
-  // 리사이즈 시 패널 width 재계산
-  window.addEventListener('resize', () => ui.slide(S.step));
 }
 
 // ─── 단계 이동 ─────────────────────────

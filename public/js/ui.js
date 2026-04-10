@@ -5,18 +5,11 @@
 import { MAIN_CATS, TASKS, ELECTION_TYPES, VARS, VERDICT_META, TASK_KEYWORDS } from './config.js';
 import { searchAll, searchQA, searchLaws, searchGuides, getQuickProcedure } from './search.js';
 
-// ─── 슬라이드/스텝 ─────────────────────────
+// ─── 슬라이드/스텝 (active 토글, transform 없음) ─────────────
 export function slide(step) {
-  const wrap = document.querySelector('.slide-wrap');
-  const track = document.getElementById('slideTrack');
-  if (!wrap || !track) return;
-  const w = wrap.clientWidth;
-  // 패널 width를 부모 width에 정확히 맞춤 (% 오차 제거)
-  track.querySelectorAll('.slide-panel').forEach(p => {
-    p.style.width = w + 'px';
-    p.style.minWidth = w + 'px';
+  document.querySelectorAll('.slide-panel').forEach((p, i) => {
+    p.classList.toggle('active', i === step);
   });
-  track.style.transform = `translateX(-${step * w}px)`;
 }
 
 export function updateStepBar(step) {

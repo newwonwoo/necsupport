@@ -43,8 +43,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 /* ── 본문 ── */
 .app-body{flex:1;display:flex;position:relative;overflow:hidden}
 .slide-wrap{flex:1;position:relative;overflow:hidden}
-.slide-track{display:flex;height:calc(100vh - 64px);transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform}
-.slide-panel{flex:none;height:100%;padding:32px 32px 24px;overflow-y:auto;display:flex;flex-direction:column}
+.slide-track{position:relative;height:calc(100vh - 64px)}
+.slide-panel{display:none;position:absolute;inset:0;padding:32px 32px 24px;overflow-y:auto;flex-direction:column}
+.slide-panel.active{display:flex}
 .panel-title{font-size:22px;font-weight:700;color:var(--mint-dark);margin-bottom:6px}
 .panel-sub{font-size:13px;color:var(--text3);margin-bottom:20px}
 
