@@ -281,21 +281,20 @@ function _bindVarBubble(state, bubble, varKey) {
     b.addEventListener('click', () => {
       const body = bubble.querySelector('.var-body');
       body.querySelectorAll('.var-pills,.var-free-btn,.var-skip-btn').forEach(el => el.style.display = 'none');
-      const iid = 'vfi' + _varIdx;
       const wrap = document.createElement('div');
       wrap.className = 'var-free-input-wrap';
-      wrap.innerHTML = `<input class="var-free-input" id="${iid}" placeholder="${varKey} 직접 입력"><button class="var-confirm-btn" data-key="${varKey}" data-iid="${iid}">확인</button>`;
+      wrap.innerHTML = `<input class="var-free-input" placeholder="${varKey} 직접 입력"><button class="var-confirm-btn" data-key="${varKey}">확인</button>`;
       body.appendChild(wrap);
-      _bindFreeInput(state, wrap, varKey, iid);
+      _bindFreeInput(state, wrap, varKey);
     });
   });
   bubble.querySelectorAll('.var-confirm-btn').forEach(b => {
-    _bindFreeInput(state, bubble, varKey, b.dataset.iid);
+    _bindFreeInput(state, bubble, varKey);
   });
 }
 
-function _bindFreeInput(state, container, varKey, iid) {
-  const inp = container.querySelector('#' + iid);
+function _bindFreeInput(state, container, varKey) {
+  const inp = container.querySelector('.var-free-input');
   const btn = container.querySelector('.var-confirm-btn');
   if (!inp || !btn) return;
   inp.focus();
@@ -335,12 +334,12 @@ function _showVarSubmit(state) {
       <div class="var-av">🤖</div>
       <div class="var-body" style="color:var(--mint-dark)">
         ${cnt > 0 ? cnt + '개 조건이 입력됐습니다. ' : ''}구체적인 상황이나 추가 정보를 자유롭게 입력해주세요. (선택)
-        <textarea id="extraDescInput" rows="3" class="extra-desc-input"
+        <textarea rows="3" class="extra-desc-input"
           placeholder="예) 후보자가 선거일 90일 전 지역 노인회 모임에서 음료를 제공함"
         >${escapeHtml(state.extraDesc || '')}</textarea>
       </div>`;
     area.appendChild(d);
-    const inp = document.getElementById('extraDescInput');
+    const inp = d.querySelector('.extra-desc-input');
     if (inp) {
       inp.addEventListener('input', e => { state.extraDesc = e.target.value; });
     }
@@ -490,7 +489,7 @@ export function renderResult(state, results, ai) {
       wrap.querySelectorAll('.res-tab').forEach(b => b.classList.remove('active'));
       wrap.querySelectorAll('.res-tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      wrap.querySelector('#tab-' + btn.dataset.tab)?.classList.add('active');
     });
   });
 
@@ -537,7 +536,7 @@ function renderGuideTab(guides) {
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">p.${g.page_hint || '-'}</span>
       </div>
       <div class="guide-card-title">${escapeHtml(g.title || '')}</div>
-      <div class="guide-card-summary" id="gs-${i}">${escapeHtml(g.summary || '')}</div>
+      <div class="guide-card-summary">${escapeHtml(g.summary || '')}</div>
     </div>
   `).join('');
   return `<div class="res-sec"><div class="res-sec-title">📋 관련 실무안내 ${guides.length}건</div>${cards}</div>`;
